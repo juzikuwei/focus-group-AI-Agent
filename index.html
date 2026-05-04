@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>虚拟焦点小组深度访谈系统</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+
+      <!-- ======================= HOME VIEW ======================= -->
+      <section class="view view-home active" id="viewHome">
+        <header class="hero">
+          <p class="eyebrow">Focus Group Simulator</p>
+          <h1>虚拟焦点小组深度访谈系统</h1>
+          <p class="subtitle">
+            基于大语言模型的多角色访谈模拟工具：让 AI 扮演不同人设的虚拟受访者，围绕产品概念展开多轮讨论，自动汇总抗性、期待与心理痛点。
+          </p>
+        </header>
+
+        <!-- ===== Quick Fill ===== -->
+        <section class="quick-fill card">
+          <div class="card-heading">
+            <span class="badge badge-accent">✨ 快捷创建</span>
+            <h2>用一句话描述你的产品想法</h2>
+            <p class="card-sub">交给 AI 一键填好产品概念、卖点、受众和访谈问题，再手动微调即可。</p>
+          </div>
+          <div class="quick-fill-row">
+            <input
+              id="quickFillInput"
+              type="text"
+              placeholder="例如：面向 Z 世代的极简记账 App，主打无广告和年度回顾"
+              autocomplete="off"
+            />
+            <button id="quickFillBtn" class="primary" type="button">
+              <span class="btn-label">生成项目</span>
+            </button>
+          </div>
+          <div class="quick-fill-examples">
+            <span class="examples-label">试试：</span>
+            <button class="chip" type="button" data-quick="一款主打 45-65 ℃ 控温的智能保温杯，售价 399 元">智能保温杯 · 399 元</button>
+            <button class="chip" type="button" data-quick="一个面向独居青年的轻社区 App，按兴趣匹配真实生活搭子">独居青年社交 App</button>
+            <button class="chip" type="button" data-quick="一款植物基酸奶系列，主打低糖、高蛋白和环保包装">植物基酸奶</button>
+            <button class="chip" type="button" data-quick="一个面向中小学家长的 AI 错题本，自动整理薄弱点">AI 错题本</button>
+          </div>
+        </section>
+
+        <!-- ===== Form ===== -->
+        <section class="form-section card">
+          <div class="card-heading">
+            <span class="badge badge-slate">📝 项目详情</span>
+            <h2>填写或编辑项目细节</h2>
+            <p class="card-sub">所有字段都可以直接编辑。完成后点"开始访谈"即可进入模拟。</p>
+          </div>
+
+          <div class="form-body">
+            <label>
+              项目名称
+              <input id="projectName" type="text" value="智能随行咖啡杯上市前访谈" />
+            </label>
+
+            <label>
+              产品概念
+              <textarea id="productConcept" rows="4">一款可通过手机 App 控温、记录饮水和咖啡因摄入、支持无线充电的智能随行咖啡杯，目标是帮助通勤人群保持合适饮用温度并管理咖啡摄入。</textarea>
+            </label>
+
+            <div class="form-grid">
+              <label>
+                核心卖点
+                <textarea id="coreSellingPoints" rows="3">45-65 摄氏度精确控温；App 记录咖啡因摄入；杯身轻量防漏；无线充电底座；售价 399 元。</textarea>
+              </label>
+              <label>
+                目标受众
+                <textarea id="targetAudience" rows="3">一二线城市 22-40 岁通勤白领、咖啡爱好者、注重效率和生活品质的人群。</textarea>
+              </label>
+            </div>
+
+            <label>
+              访谈问题（每行一个，3-10 个；不足会自动补默认议题）
+              <textarea id="discussionTopics" rows="5">第一眼是否觉得这个产品有用？
+399 元是否能接受？
+哪些功能最有吸引力？
+最大的购买顾虑是什么？
+如果只能改一个地方，应该改什么？</textarea>
+            </label>
+
+            <div class="form-grid form-grid-4">
+              <label>
+                受访者数量
+                <input id="participantCount" type="number" min="5" max="10" step="1" value="5" />
+              </label>
+              <label>
+                探讨轮数
+                <input id="roundCount" type="number" min="3" max="10" step="1" value="5" />
+              </label>
+              <label>
+                主持风格
+                <select id="tone">
+                  <option value="真实">真实自然</option>
+                  <option value="犀利" selected>犀利追问</option>
+                  <option value="温和">温和探索</option>
+                  <option value="专家型">专业中立</option>
+                </select>
+              </label>
+              <label>
+                输出深度
+                <select id="outputDepth">
+                  <option value="标准" selected>标准</option>
+                  <option value="深入">深入</option>
+                  <option value="简洁">简洁</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="resetFormBtn" class="ghost" type="button">↺ 恢复示例</button>
+            <button id="startBtn" class="primary primary-lg" type="button">开始访谈 →</button>
+          </div>
+        </section>
+
+        <!-- ===== Recent ===== -->
+        <section class="recent-section card">
+          <div class="card-heading">
+            <span class="badge badge-slate">📂 最近项目</span>
+            <h2 id="recentTitle">本地保存的项目</h2>
+            <p class="card-sub">点击卡片即可恢复项目；已完成的项目可直接查看报告。</p>
+          </div>
+          <div id="recentGrid" class="recent-grid"></div>
+        </section>
+
+        <footer class="page-footer">
+          <p>由你配置的自有 API 提供模型能力。项目数据保存在本机浏览器，刷新不丢失。</p>
+        </footer>
+      </section>
+
+      <!-- ======================= RUNNING VIEW ======================= -->
+      <section class="view view-running" id="viewRunning">
+        <header class="run-header">
+          <button id="cancelRunBtn" class="ghost back-btn" type="button">← 返回主界面</button>
+          <h2 id="runProjectName">访谈进行中</h2>
+        </header>
+
+        <div class="stage-bar">
+          <div class="stage" data-stage="personas" id="stagePersonas" role="button" tabindex="0" aria-controls="sectionPersonas">
+            <div class="stage-num">1</div>
+            <div class="stage-text">
+              <strong>召集受访者</strong>
+              <span>AI 正在生成差异化人设</span>
+            </div>
+          </div>
+          <div class="stage-connector"></div>
+          <div class="stage" data-stage="session" id="stageSession" role="button" tabindex="0" aria-controls="sectionSession">
+            <div class="stage-num">2</div>
+            <div class="stage-text">
+              <strong>多轮访谈</strong>
+              <span>主持人引导 + 受访者发言</span>
+            </div>
+          </div>
+          <div class="stage-connector"></div>
+          <div class="stage" data-stage="report" id="stageReport" role="button" tabindex="0" aria-controls="sectionReport">
+            <div class="stage-num">3</div>
+            <div class="stage-text">
+              <strong>洞察报告</strong>
+              <span>提炼抗性 / 期待 / 痛点</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="run-body">
+          <div class="run-status">
+            <div class="run-spinner" aria-hidden="true"></div>
+            <div>
+              <h3 id="runHeadline">正在召集受访者…</h3>
+              <p id="runDetail" class="run-detail">AI 正在根据你的产品概念生成多名差异化虚拟受访者，约需 10-30 秒。</p>
+              <div class="run-meta" id="runMeta" hidden>
+                <span id="runElapsed">总耗时 00:00</span>
+                <span id="stageElapsed">当前阶段 00:00</span>
+              </div>
+              <div class="run-retry" id="ctrlRetry" hidden>
+                <button id="retryRunBtn" class="primary" type="button">重试当前步骤</button>
+                <span id="retryHint">会从失败的阶段继续，不会清空已生成内容。</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 区块 1：受访者 ===== -->
+          <section class="run-section" id="sectionPersonas" hidden>
+            <header class="run-section-head">
+              <span class="run-section-num">1</span>
+              <h4>受访者画像</h4>
+            </header>
+            <div id="previewPersonas" class="persona-grid persona-grid-compact"></div>
+          </section>
+
+          <!-- ===== 区块 2：多轮访谈（含模式选择 + 继续按钮）===== -->
+          <section class="run-section" id="sectionSession" hidden>
+            <header class="run-section-head">
+              <span class="run-section-num">2</span>
+              <h4>多轮访谈</h4>
+              <span class="round-badge" id="roundBadge" hidden>
+                已完成 <strong id="completedRounds">0</strong> / <span id="totalRounds">0</span> 轮
+              </span>
+              <button id="viewEvidencePackBtn" class="ghost compact-btn" type="button" hidden>查看资料包</button>
+            </header>
+
+            <div class="mode-choice-inline" id="ctrlModeChoice" hidden>
+              <div class="control-text">
+                <strong>请选择访谈方式</strong>
+                <span>两种方式都会跑完全部轮次，区别在于你是否手动控制节奏。</span>
+              </div>
+              <div class="mode-grid">
+                <button class="mode-btn" type="button" data-mode="step">
+                  <span class="mode-icon">🐢</span>
+                  <strong>一步一轮</strong>
+                  <span class="mode-desc">你来控制每轮节奏，可逐轮查看发言、随时停下回看</span>
+                </button>
+                <button class="mode-btn" type="button" data-mode="all">
+                  <span class="mode-icon">⚡</span>
+                  <strong>直接到位</strong>
+                  <span class="mode-desc">先整理外部资料包，再一次性跑完整场访谈，适合快速产出报告</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="previewChat" class="chat-log chat-log-compact"></div>
+
+            <div class="round-continue" id="ctrlContinueRound" hidden>
+              <button id="continueRoundBtn" class="primary primary-lg" type="button">
+                继续第 <span id="nextRoundNumber">2</span> 轮 →
+              </button>
+              <span class="continue-hint">点击「返回主界面」可暂停，已生成内容会保存为草稿</span>
+            </div>
+          </section>
+
+          <!-- ===== 区块 3：洞察报告 ===== -->
+          <section class="run-section" id="sectionReport" hidden>
+            <header class="run-section-head">
+              <span class="run-section-num">3</span>
+              <h4>洞察报告</h4>
+              <div class="report-actions" id="runReportActions" hidden>
+                <button id="copyReportBtn" class="ghost compact-btn" type="button">复制 Markdown</button>
+                <button id="downloadReportBtn" class="compact-btn" type="button">导出 PDF</button>
+              </div>
+            </header>
+            <div class="report-pending" id="reportPendingWrap">
+              <div class="run-spinner sm" aria-hidden="true"></div>
+              <span id="reportPendingText">正在汇总抗性、期待和心理痛点…</span>
+            </div>
+            <article id="reportContent" class="report run-report" hidden></article>
+          </section>
+        </div>
+      </section>
+
+      <div class="modal-backdrop" id="evidencePackModal" hidden>
+        <div class="modal-panel evidence-modal" role="dialog" aria-modal="true" aria-labelledby="evidencePackTitle">
+          <header class="modal-head">
+            <div>
+              <p class="eyebrow eyebrow-sm">EXTERNAL EVIDENCE</p>
+              <h3 id="evidencePackTitle">外部资料包</h3>
+            </div>
+            <button id="closeEvidencePackBtn" class="ghost icon-btn" type="button" aria-label="关闭资料包">×</button>
+          </header>
+          <div id="evidencePackContent" class="evidence-content"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

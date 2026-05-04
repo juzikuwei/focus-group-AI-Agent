@@ -1,0 +1,25 @@
+{
+  "_help": [
+    "搜索工具配置。直接到位模式会在 enabled=true 且有搜索 API Key 时先生成 evidencePack。",
+    "真实 Key 不要写在这个文件里，请写到 config/search.config.local.json。",
+    "当前默认适配 Tavily Search API。"
+  ],
+  "enabled": true,
+  "active": "tavily",
+  "maxQueries": 10,
+  "maxResultsPerQuery": 10,
+  "providers": {
+    "tavily": {
+      "name": "tavily",
+      "format": "tavily",
+      "endpoint": "https://api.tavily.com/search",
+      "apiKey": "",
+      "requiresKey": true,
+      "searchDepth": "advanced",
+      "chunksPerSource": 2,
+      "includeRawContent": false,
+      "includeAnswer": true,
+      "_note": "在 config/search.config.local.json 里填 providers.tavily.apiKey，并把 enabled 设为 true。"
+    }
+  }
+}

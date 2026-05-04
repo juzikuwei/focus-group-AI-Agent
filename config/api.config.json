@@ -1,0 +1,64 @@
+{
+  "_help": [
+    "把 active 改成下面 providers 里某个 key 的名字，再配置对应条目的 endpoint 和 model 即可。",
+    "支持 3 种 API 标准（format 字段）：",
+    "  - openai    : OpenAI 兼容（GPT、DeepSeek、Kimi、Groq、智谱、通义、Mistral、OpenRouter 等都用这个）",
+    "  - anthropic : Anthropic Claude 原生 /v1/messages 接口",
+    "  - gemini    : Google Gemini 原生 :generateContent 接口",
+    "改完后必须重启 server（Ctrl+C 然后 npm start）。"
+  ],
+
+  "active": "mino",
+
+  "providers": {
+
+    "openai": {
+      "format": "openai",
+      "endpoint": "https://api.openai.com/v1/chat/completions",
+      "model": "gpt-4o-mini",
+      "apiKey": "",
+      "_note": "OpenAI 兼容格式。把 endpoint/model/apiKey 三项改成对应厂商的即可，比如：",
+      "_examples": {
+        "deepseek": { "endpoint": "https://api.deepseek.com/v1/chat/completions", "model": "deepseek-chat" },
+        "moonshot": { "endpoint": "https://api.moonshot.cn/v1/chat/completions", "model": "moonshot-v1-8k" },
+        "groq":     { "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "llama-3.3-70b-versatile" },
+        "zhipu":    { "endpoint": "https://open.bigmodel.cn/api/paas/v4/chat/completions", "model": "glm-4-flash" },
+        "qwen":     { "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", "model": "qwen-turbo" },
+        "openrouter": { "endpoint": "https://openrouter.ai/api/v1/chat/completions", "model": "openai/gpt-4o-mini" }
+      }
+    },
+
+    "grok": {
+      "format": "openai",
+      "endpoint": "https://elysiver.h-e.top/v1/chat/completions",
+      "model": "grok-4.20-fast",
+      "apiKey": "",
+      "_note": "真实 API Key 填到 config/api.config.local.json 的 providers.grok.apiKey。"
+    },
+
+    "mino": {
+      "format": "openai",
+      "endpoint": "https://token-plan-sgp.xiaomimimo.com/v1/chat/completions",
+      "model": "mimo-v2.5-pro",
+      "apiKey": "",
+      "_note": "真实 API Key 填到 config/api.config.local.json 的 providers.mino.apiKey。"
+    },
+
+    "anthropic": {
+      "format": "anthropic",
+      "endpoint": "https://api.anthropic.com/v1/messages",
+      "model": "claude-sonnet-4-5-20250929",
+      "apiKey": "",
+      "_note": "Anthropic Claude 原生格式。Key 从 console.anthropic.com 申请。"
+    },
+
+    "gemini": {
+      "format": "gemini",
+      "endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
+      "model": "gemini-2.0-flash",
+      "apiKey": "",
+      "_note": "Google Gemini 原生格式。Key 从 aistudio.google.com 申请，有免费额度。"
+    }
+
+  }
+}
