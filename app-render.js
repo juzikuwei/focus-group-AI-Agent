@@ -173,7 +173,7 @@ function renderEvidenceList(title, items) {
 function renderSourceCard(card, index) {
   const title = card.title || `来源 ${index + 1}`;
   const id = card.id || `S${index + 1}`;
-  const url = card.url || "";
+  const url = safeExternalUrl(card.url || "");
   const titleHtml = url
     ? `<a href="${escapeAttr(url)}" target="_blank" rel="noreferrer">${escapeHtml(id)}｜${escapeHtml(title)}</a>`
     : `${escapeHtml(id)}｜${escapeHtml(title)}`;
@@ -191,6 +191,15 @@ function renderSourceCard(card, index) {
       ${renderSourceCardList("展示片段", card.quoteSnippets)}
     </article>
   `;
+}
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(String(value || ""), window.location.origin);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+  } catch {
+    return "";
+  }
 }
 
 function renderSourceCardList(title, items) {
@@ -220,9 +229,10 @@ export function renderRunReport(project) {
   };
 
   const hasReport = Boolean(data.reportMarkdown);
+  const isStreaming = !project && state.reportStreaming;
   content.hidden = !hasReport;
-  actions.hidden = !hasReport;
-  pending.hidden = hasReport;
+  actions.hidden = !hasReport || isStreaming;
+  pending.hidden = hasReport && !isStreaming;
   if (hasReport) {
     renderReportContent(content, data);
   }

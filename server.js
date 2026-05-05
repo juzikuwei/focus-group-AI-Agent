@@ -16,6 +16,7 @@ const { sendJson } = require("./lib/http");
 const { serveStatic } = require("./lib/static");
 
 const PORT = Number(process.env.PORT || 5173);
+const HOST = process.env.HOST || "localhost";
 const ROOT = __dirname;
 
 const apiConfig = loadApiConfig(ROOT);
@@ -41,17 +42,26 @@ const routes = {
   "POST /api/session": focusGroup.handleSession,
   "POST /api/session/round": focusGroup.handleSessionRound,
   "POST /api/report": focusGroup.handleReport,
+  "POST /api/report/stream": focusGroup.handleReportStream,
   "POST /api/quick-fill": focusGroup.handleQuickFill,
 };
 
 const server = http.createServer(async (req, res) => {
+  const requestAbort = new AbortController();
+  req.requestSignal = requestAbort.signal;
+  req.on("aborted", () => requestAbort.abort());
+  res.on("close", () => {
+    if (!res.writableEnded && !res.destroyed) requestAbort.abort();
+  });
+
   try {
-    const route = routes[`${req.method} ${req.url}`];
+    const urlPath = getRequestPath(req);
+    const route = routes[`${req.method} ${urlPath}`];
     if (route) {
       return await route(req, res, sendJson);
     }
 
-    if (req.method === "GET" && req.url === "/api/health") {
+    if (req.method === "GET" && urlPath === "/api/health") {
       return sendJson(res, 200, {
         ok: true,
         provider: activeProvider.name,
@@ -65,7 +75,7 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    if (req.method === "GET" && req.url === "/api/config") {
+    if (req.method === "GET" && urlPath === "/api/config") {
       return sendJson(res, 200, {
         activeProvider: activeProvider.name,
         providers: Object.fromEntries(
@@ -92,21 +102,30 @@ const server = http.createServer(async (req, res) => {
 
     return serveStatic(ROOT, req, res);
   } catch (error) {
+    if (error.name === "AbortError") {
+      if (!res.writableEnded && !res.destroyed) {
+        return sendJson(res, 499, { error: "Request cancelled" });
+      }
+      return undefined;
+    }
     if (error.statusCode && error.statusCode < 500) {
       return sendJson(res, error.statusCode, { error: error.message });
     }
+    if (isSafeConfigError(error)) {
+      return sendJson(res, 400, { error: error.message });
+    }
     console.error(error);
-    return sendJson(res, 502, { error: "AI service error", detail: error.message });
+    return sendJson(res, 502, { error: "AI 服务调用失败，请检查服务端日志或稍后重试。" });
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`\nFocus Group MVP running at http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`\nFocus Group MVP running at http://${HOST}:${PORT}`);
   console.log(`  Provider : ${activeProvider.name} (${activeProviderName}) [format: ${activeProvider.format}]`);
   console.log(`  Endpoint : ${activeProvider.endpoint || "(none)"}`);
   console.log(`  Model    : ${activeProvider.model || "(none)"}`);
   if (activeProvider.requiresKey) {
-    console.log(`  API Key  : ${activeProvider.apiKey ? "✓ loaded" : "✗ MISSING — set apiKey in config/api.config.local.json"}`);
+    console.log(`  API Key  : ${activeProvider.apiKey ? "loaded" : "MISSING - set apiKey in config/api.config.local.json"}`);
   } else {
     console.log("  API Key  : (not required)");
   }
@@ -114,3 +133,19 @@ server.listen(PORT, () => {
   console.log(`  Search   : ${searchStatus.enabled ? "enabled" : "disabled"}${searchStatus.provider ? ` (${searchStatus.provider})` : ""}${searchStatus.hasKey ? " [key loaded]" : ""}`);
   console.log(`  Available providers: ${Object.keys(providers).join(", ")}\n`);
 });
+
+function getRequestPath(req) {
+  try {
+    return new URL(req.url || "/", "http://localhost").pathname;
+  } catch {
+    return "/";
+  }
+}
+
+function isSafeConfigError(error) {
+  const message = String(error?.message || "");
+  return (
+    message.includes("没有配置 endpoint") ||
+    (message.includes("缺少") && message.includes("API Key"))
+  );
+}

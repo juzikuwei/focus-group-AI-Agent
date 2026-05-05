@@ -11,7 +11,8 @@ npm start
 
 浏览器打开 [http://localhost:5173](http://localhost:5173)。
 
-默认使用 `grok` 这个 OpenAI 兼容 provider。首次运行前请在 `config/api.config.local.json` 里填写自己的 API Key。
+默认使用 `mino` 这个 OpenAI 兼容 provider。首次运行前请在 `config/api.config.local.json` 里填写自己的 API Key。
+服务默认只监听本机 `localhost`；如需局域网访问，macOS/Linux 可用 `HOST=0.0.0.0 npm start`，PowerShell 可用 `$env:HOST='0.0.0.0'; npm start` 显式开启。
 
 ## 配置 API 与切换模型
 
@@ -24,9 +25,9 @@ npm start
 
 ```json
 {
-  "active": "grok",
+  "active": "mino",
   "providers": {
-    "grok": { "format": "openai", "endpoint": "...", "model": "grok-4.20-fast", "apiKey": "" }
+    "mino": { "format": "openai", "endpoint": "...", "model": "mimo-v2.5-pro", "apiKey": "" }
   }
 }
 ```
@@ -36,7 +37,7 @@ npm start
 ```json
 {
   "providers": {
-    "grok": {
+    "mino": {
       "apiKey": "sk-你的新Key"
     }
   }
@@ -123,7 +124,7 @@ focus-group-mvp/
 - 结果视图：受访者卡片 / 访谈实录 / Markdown 报告（可复制 / 导出 PDF）
 - PDF 导出走浏览器原生 `window.print()`：文本可选可搜，跨平台中文一致
 - 访谈生成采用 JSON 消息契约，避免依赖”姓名：发言”的脆弱文本解析
-- 8 个 HTTP 端点（6 POST + 2 GET，见下方 API 端点）外加静态资源服务
+- 9 个 HTTP 端点（7 POST + 2 GET，见下方 API 端点）外加静态资源服务
 
 ## API 端点
 
@@ -131,7 +132,8 @@ focus-group-mvp/
 - `POST /api/moderator-guide` 生成主持指南与初始受访者立场记忆
 - `POST /api/session` 一次性生成多轮访谈（直接到位模式）
 - `POST /api/session/round` 生成单轮访谈（一步一轮模式）
-- `POST /api/report` 生成 Markdown 洞察报告
+- `POST /api/report` 生成 Markdown 洞察报告（一次性返回）
+- `POST /api/report/stream` 流式生成洞察报告（NDJSON 事件，前端默认走这个）
 - `POST /api/quick-fill` 一句话扩成完整项目配置
 - `GET /api/health` 健康检查（含当前 provider / 搜索状态）
 - `GET /api/config` 列出所有 provider 与 prompt 文件

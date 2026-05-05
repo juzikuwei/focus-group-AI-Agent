@@ -319,17 +319,18 @@ Prompt 文件读取与模板渲染模块。
 
 ### `lib/focus-group-service.js`
 
-焦点小组核心业务模块（约 660 行，工厂 + handler 编排）。
+焦点小组核心业务模块（约 980 行，工厂 + handler 编排）。
 
 主要职责：
 
 - 暴露工厂 `createFocusGroupService({ promptStore, llm, searchClient })`。
-- 6 个路由 handler：
+- 7 个路由 handler：
   - `POST /api/personas`：生成受访者。
   - `POST /api/moderator-guide`：生成主持指南和初始受访者立场记忆。
   - `POST /api/session`：直接生成完整访谈（含搜索增强 evidencePack）。
   - `POST /api/session/round`：多段式一步一轮深访。
-  - `POST /api/report`：生成洞察报告。
+  - `POST /api/report`：一次性生成洞察报告。
+  - `POST /api/report/stream`：流式生成洞察报告，按 NDJSON 事件（`start` / `chunk` / `done` / `error`）推送，前端默认走这个端点。
   - `POST /api/quick-fill`：一句话补全项目配置（含搜索增强）。
 - 一步一轮编排：`generateDeepSessionRound` → 主持人开场 + 第一组受访者 + 主持人追问 + 第二组受访者 + 主持人小结，并并发更新立场记忆。
 - 资料包获取：`buildEvidencePackForDirectSession` / `buildQuickFillResearch`（依赖 `searchClient`）。
@@ -599,7 +600,7 @@ prompts/
        -> 更新受访者立场记忆
        -> 更新 contextState
   -> 多轮重复
-  -> /api/report
+  -> /api/report/stream（流式逐段返回 Markdown）
 ```
 
 ### 直接到位模式
@@ -614,7 +615,7 @@ prompts/
        -> 调用搜索 API
        -> 整理 evidencePack
        -> 基于 evidencePack 生成完整访谈
-  -> /api/report
+  -> /api/report/stream（流式逐段返回 Markdown）
 ```
 
 ## 后续扩展建议

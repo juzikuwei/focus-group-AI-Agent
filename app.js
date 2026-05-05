@@ -25,7 +25,7 @@ import {
   persistCurrent,
   loadProjectIntoState,
 } from "./app-storage.js";
-import { postJson, showToast } from "./app-api.js";
+import { postJson, postJsonStream, showToast } from "./app-api.js";
 import { escapeHtml, escapeAttr } from "./app-markdown.js";
 import {
   renderPersonaGrid,
@@ -599,6 +599,16 @@ async function runPersonasStage(config, runToken) {
 }
 
 async function runSessionAllAtOnce() {
+  const config = getConfig();
+  const capacityMessage = getDirectCapacityMessage(config, state.personas.length, state.topics.length);
+  if (capacityMessage) {
+    setSpinnerVisible(false);
+    setRunStatus("直接到位规模过大", capacityMessage, true);
+    showControlPanel("ctrlModeChoice");
+    showToast("当前规模建议使用一步一轮");
+    return;
+  }
+
   const runToken = ensureActiveRun("直接到位访谈");
   state.runMode = "all";
   state.runSubStage = "session-running";
@@ -609,7 +619,6 @@ async function runSessionAllAtOnce() {
   startDirectModeProgress();
 
   try {
-    const config = getConfig();
     const sessionResp = await postJson("/api/session", {
       config,
       personas: state.personas,
@@ -638,6 +647,20 @@ async function runSessionAllAtOnce() {
     stopDirectModeProgress();
     handleRunError(error, runToken);
   }
+}
+
+function getDirectCapacityMessage(config, personaCount, topicCount) {
+  const load = Number(personaCount) * Number(topicCount);
+  const limit = getDirectSessionCapacity(config);
+  if (load <= limit) return "";
+  return `当前为 ${personaCount} 人 × ${topicCount} 轮，超过直接到位一次性生成的稳定上限 ${limit}。请改用一步一轮，或降低人数/轮次后再使用直接到位。`;
+}
+
+function getDirectSessionCapacity(config = {}) {
+  const depth = String(config.outputDepth || "");
+  if (depth.includes("深入")) return 30;
+  if (depth.includes("简洁")) return 56;
+  return 42;
 }
 
 async function runOneRound() {
@@ -727,7 +750,7 @@ async function runReportStage(runToken = null) {
 
   try {
     const config = getConfig();
-    const reportResp = await postJson("/api/report", {
+    const payload = {
       config,
       personas: state.personas,
       messages: state.messages,
@@ -735,9 +758,43 @@ async function runReportStage(runToken = null) {
       participantStates: state.participantStates,
       contextState: state.contextState,
       evidencePack: state.evidencePack,
-    }, { signal: state.abortController?.signal });
+    };
+    let lastRenderAt = 0;
+    const renderPartialReport = (force = false) => {
+      if (!isCurrentRun(runToken)) return;
+      const now = Date.now();
+      if (!force && now - lastRenderAt < 300) return;
+      lastRenderAt = now;
+      renderRunReport();
+    };
+
+    state.reportMarkdown = "";
+    state.reportStreaming = true;
+    renderRunReport();
+    await postJsonStream("/api/report/stream", payload, {
+      signal: state.abortController?.signal,
+      onEvent: (event) => {
+        if (!isCurrentRun(runToken)) return;
+        if (event.type === "start") {
+          $("reportPendingText").textContent = "正在生成报告，内容会逐步显示…";
+          return;
+        }
+        if (event.type === "chunk") {
+          const text = event.text || "";
+          if (!text) return;
+          state.reportMarkdown += text;
+          $("reportPendingText").textContent = "正在生成报告，可先预览已返回内容…";
+          renderPartialReport();
+          return;
+        }
+        if (event.type === "done") {
+          state.reportMarkdown = event.markdown || state.reportMarkdown;
+          renderPartialReport(true);
+        }
+      },
+    });
     if (!isCurrentRun(runToken)) return;
-    state.reportMarkdown = reportResp.markdown || "";
+    state.reportStreaming = false;
     setStage("report", "done");
     persistCurrent("completed");
     state.runSubStage = "done";
@@ -747,9 +804,12 @@ async function runReportStage(runToken = null) {
     setRunStatusVisible(false);
     showToast("访谈和报告已完成");
   } catch (error) {
+    state.reportStreaming = false;
+    renderRunReport();
     handleRunError(error, runToken);
   } finally {
     if (isCurrentRun(runToken)) {
+      state.reportStreaming = false;
       state.isRunning = false;
       state.abortController = null;
     }

@@ -57,6 +57,7 @@ export const state = {
   currentStageLabel: "",
   lastFailedSubStage: null,
   activeRunPanel: "personas",
+  reportStreaming: false,
 };
 
 export function getConfig() {

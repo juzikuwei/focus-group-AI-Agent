@@ -6,8 +6,8 @@
   ],
   "enabled": true,
   "active": "tavily",
-  "maxQueries": 10,
-  "maxResultsPerQuery": 10,
+  "maxQueries": 4,
+  "maxResultsPerQuery": 5,
   "providers": {
     "tavily": {
       "name": "tavily",
@@ -15,8 +15,8 @@
       "endpoint": "https://api.tavily.com/search",
       "apiKey": "",
       "requiresKey": true,
-      "searchDepth": "advanced",
-      "chunksPerSource": 2,
+      "searchDepth": "basic",
+      "chunksPerSource": 1,
       "includeRawContent": false,
       "includeAnswer": true,
       "_note": "在 config/search.config.local.json 里填 providers.tavily.apiKey，并把 enabled 设为 true。"
