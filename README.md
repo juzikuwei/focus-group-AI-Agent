@@ -54,6 +54,18 @@ npm start
 
 要接其他 OpenAI 兼容厂商，复制 `openai` 那条改 `endpoint` 和 `model` 即可。`config/api.config.json` 内 `_examples` 字段列了 6 家常用 OpenAI 兼容服务的完整 endpoint 可直接抄。
 
+> **如果调用返回 400 / "unsupported response_format"**：默认会对 JSON 类调用发送 `response_format: { type: "json_object" }`。少数自研 OpenAI 兼容服务不支持该字段。在对应 provider 条目里加 `"supportsJsonMode": false` 即可关闭：
+>
+> ```json
+> "myprovider": {
+>   "format": "openai",
+>   "endpoint": "...",
+>   "model": "...",
+>   "apiKey": "",
+>   "supportsJsonMode": false
+> }
+> ```
+
 **改完一定要重启 server**（Ctrl+C → `npm start`）。启动横幅会显示当前 provider、model 和 key 是否加载成功。
 
 ## 文件结构
@@ -91,11 +103,11 @@ focus-group-mvp/
 │  ├─ validators.js              请求参数校验
 │  ├─ focus-group-service.js     路由 handler + 主流程编排
 │  ├─ text-utils.js              字符串清洗 + 并发工具
-│  ├─ interview-profiles.js      主持风格 / 输出深度 profile
+│  ├─ interview-profiles.js      默认访谈 / 报告规则 profile
 │  ├─ token-estimator.js         各阶段 token 上限估算
 │  ├─ normalizers.js             受访者 / 主持指南 / 消息规范化
 │  ├─ anonymizer.js              报告匿名化（R1/R2/…）
-│  ├─ evidence-pack.js           evidencePack 规范化与注入
+│  ├─ evidence-pack.js           evidencePack / 搜索结果规范化
 │  ├─ quick-fill.js              一句话项目扩写规范化
 │  └─ report-builder.js          报告生成 + 截断续写
 └─ prompts/
@@ -103,36 +115,32 @@ focus-group-mvp/
    ├─ moderator-guide.md
    ├─ search-plan.md
    ├─ evidence-pack.md
-   ├─ focus-group-session.md
-   ├─ session-round.md
    ├─ moderator-turn.md
    ├─ participant-turn.md
    ├─ participant-state-updater.md
    ├─ report-analyst.md
    ├─ quick-fill.md
    ├─ quick-fill-search-plan.md
-   ├─ moderator.md
-   └─ participant.md
+   └─ round-facilitator-decision.md
 ```
 
 ## 已实现功能
 
 - 主界面 hero + 快捷输入（一句话生成项目，可叠加搜索增强）+ 详情表单 + 最近项目（localStorage）
 - 运行视图：3 阶段进度条 + 受访者预览 + 主持指南 + 受访者立场记忆 + 真实耗时提示 + 失败重试
-- 手动流程控制：受访者生成后暂停 → 选择「一步一轮」或「直接到位」→ 生成报告
-- 直接到位模式可选搜索增强：先生成 evidencePack，再一次性跑完整场访谈
+- 流程控制：可选「逐轮深访」手动推进，或「极速完整访谈」自动连续跑完各轮
+- 极速完整访谈支持可选网络搜索增强：先整理外部资料包，再逐轮流式生成访谈并继续生成报告；搜索失败会降级继续
 - 结果视图：受访者卡片 / 访谈实录 / Markdown 报告（可复制 / 导出 PDF）
 - PDF 导出走浏览器原生 `window.print()`：文本可选可搜，跨平台中文一致
 - 访谈生成采用 JSON 消息契约，避免依赖”姓名：发言”的脆弱文本解析
-- 9 个 HTTP 端点（7 POST + 2 GET，见下方 API 端点）外加静态资源服务
+- 8 个 HTTP 端点（6 POST + 2 GET，见下方 API 端点）外加静态资源服务
 
 ## API 端点
 
 - `POST /api/personas` 生成虚拟受访者
 - `POST /api/moderator-guide` 生成主持指南与初始受访者立场记忆
-- `POST /api/session` 一次性生成多轮访谈（直接到位模式）
-- `POST /api/session/round` 生成单轮访谈（一步一轮模式）
-- `POST /api/report` 生成 Markdown 洞察报告（一次性返回）
+- `POST /api/evidence-pack` 在搜索增强开启时生成外部资料包并注入结构化上下文
+- `POST /api/session/round/stream` 流式生成单轮访谈（逐轮深访与极速完整访谈共用）
 - `POST /api/report/stream` 流式生成洞察报告（NDJSON 事件，前端默认走这个）
 - `POST /api/quick-fill` 一句话扩成完整项目配置
 - `GET /api/health` 健康检查（含当前 provider / 搜索状态）

@@ -64,7 +64,3 @@ export function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
-
-export function escapeAttr(value) {
-  return escapeHtml(value);
-}

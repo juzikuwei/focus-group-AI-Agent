@@ -12,11 +12,11 @@ export const defaultData = {
     "45-65 摄氏度精确控温；App 记录咖啡因摄入；杯身轻量防漏；无线充电底座；售价 399 元。",
   targetAudience: "一二线城市 22-40 岁通勤白领、咖啡爱好者、注重效率和生活品质的人群。",
   discussionTopics:
-    "第一眼是否觉得这个产品有用？\n399 元是否能接受？\n哪些功能最有吸引力？\n最大的购买顾虑是什么？\n如果只能改一个地方，应该改什么？",
+    "第一眼是否觉得这个产品有用？\n399 元是否能接受？\n最大的购买顾虑是什么？",
   participantCount: "5",
-  roundCount: "5",
-  tone: "犀利",
-  outputDepth: "标准",
+  roundCount: "3",
+  runModePreference: "all",
+  useSearchEnhancement: false,
 };
 
 export const fields = [
@@ -27,8 +27,8 @@ export const fields = [
   "discussionTopics",
   "participantCount",
   "roundCount",
-  "tone",
-  "outputDepth",
+  "runModePreference",
+  "useSearchEnhancement",
 ];
 
 export const state = {
@@ -47,11 +47,9 @@ export const state = {
   runSubStage: null,
   isQuickFilling: false,
   isRunning: false,
-  runStage: null,
   abortController: null,
   runToken: 0,
   timerId: null,
-  directProgressTimerId: null,
   runStartedAt: 0,
   stageStartedAt: 0,
   currentStageLabel: "",
@@ -61,28 +59,50 @@ export const state = {
 };
 
 export function getConfig() {
-  const config = fields.reduce((result, key) => {
-    result[key] = $(key).value.trim();
-    return result;
-  }, {});
+  const config = { ...defaultData, ...getVisibleFieldConfig() };
   config.participantCount = clampNumber(config.participantCount, 5, 10);
   config.roundCount = clampNumber(config.roundCount, 3, 10);
+  config.runModePreference = config.runModePreference === "step" ? "step" : "all";
   $("participantCount").value = config.participantCount;
   $("roundCount").value = config.roundCount;
   return config;
 }
 
 export function getRawConfig() {
-  return fields.reduce((config, key) => {
-    config[key] = $(key).value.trim();
-    return config;
-  }, {});
+  return { ...defaultData, ...getVisibleFieldConfig() };
 }
 
 export function setConfig(data) {
   fields.forEach((key) => {
-    if (data[key] !== undefined) $(key).value = data[key];
+    const node = $(key);
+    if (!node || data[key] === undefined) return;
+    if (node.type === "checkbox") {
+      node.checked = parseBoolean(data[key]);
+      return;
+    }
+    node.value = data[key];
   });
+}
+
+function getFieldValue(key) {
+  const node = $(key);
+  if (!node) return "";
+  if (node.type === "checkbox") return Boolean(node.checked);
+  return node.value.trim();
+}
+
+function getVisibleFieldConfig() {
+  return fields.reduce((config, key) => {
+    config[key] = getFieldValue(key);
+    return config;
+  }, {});
+}
+
+export function parseBoolean(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  const text = String(value || "").trim().toLowerCase();
+  return text === "true" || text === "1" || text === "yes" || text === "on";
 }
 
 export function clampNumber(value, min, max) {
@@ -92,7 +112,8 @@ export function clampNumber(value, min, max) {
 }
 
 export function buildTopics(config) {
-  const userTopics = config.discussionTopics
+  const roundCount = clampNumber(config.roundCount, 3, 10);
+  const userTopics = String(config.discussionTopics || "")
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean);
@@ -109,10 +130,33 @@ export function buildTopics(config) {
     "整体上，你的态度是什么？",
   ];
   const merged = [...userTopics];
-  for (let i = 0; merged.length < config.roundCount && i < fallbackTopics.length; i += 1) {
+  for (let i = 0; merged.length < roundCount && i < fallbackTopics.length; i += 1) {
     if (!merged.includes(fallbackTopics[i])) merged.push(fallbackTopics[i]);
   }
-  return merged.slice(0, config.roundCount);
+  return packTopicsIntoRounds(merged, roundCount);
+}
+
+function packTopicsIntoRounds(topics, roundCount) {
+  const safeTopics = (topics || []).map((topic) => String(topic || "").trim()).filter(Boolean);
+  if (!safeTopics.length) return [];
+  if (safeTopics.length <= roundCount) return safeTopics.slice(0, roundCount);
+
+  const rounds = [];
+  let cursor = 0;
+  for (let roundIndex = 0; roundIndex < roundCount; roundIndex += 1) {
+    const remainingTopics = safeTopics.length - cursor;
+    const remainingRounds = roundCount - roundIndex;
+    const groupSize = Math.ceil(remainingTopics / remainingRounds);
+    const group = safeTopics.slice(cursor, cursor + groupSize);
+    rounds.push(formatRoundTopicGroup(group));
+    cursor += groupSize;
+  }
+  return rounds;
+}
+
+function formatRoundTopicGroup(group) {
+  if (group.length <= 1) return group[0] || "";
+  return `组合议题：${group.map((topic, index) => `${index + 1}. ${topic}`).join("；")}`;
 }
 
 export function getCompletedRoundCount(messages) {

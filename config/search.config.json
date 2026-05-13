@@ -1,6 +1,6 @@
 {
   "_help": [
-    "搜索工具配置。直接到位模式会在 enabled=true 且有搜索 API Key 时先生成 evidencePack。",
+    "搜索工具配置。快捷生成会在 enabled=true 且有搜索 API Key 时使用搜索增强。",
     "真实 Key 不要写在这个文件里，请写到 config/search.config.local.json。",
     "当前默认适配 Tavily Search API。"
   ],

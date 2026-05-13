@@ -5,6 +5,7 @@
     "  - openai    : OpenAI 兼容（GPT、DeepSeek、Kimi、Groq、智谱、通义、Mistral、OpenRouter 等都用这个）",
     "  - anthropic : Anthropic Claude 原生 /v1/messages 接口",
     "  - gemini    : Google Gemini 原生 :generateContent 接口",
+    "如果某个 OpenAI 兼容厂商不支持 response_format=json_object（少数自研接口会返回 400），在该 provider 条目里加 \"supportsJsonMode\": false 关闭。",
     "改完后必须重启 server（Ctrl+C 然后 npm start）。"
   ],
 
@@ -28,18 +29,10 @@
       }
     },
 
-    "grok": {
-      "format": "openai",
-      "endpoint": "https://elysiver.h-e.top/v1/chat/completions",
-      "model": "grok-4.20-fast",
-      "apiKey": "",
-      "_note": "真实 API Key 填到 config/api.config.local.json 的 providers.grok.apiKey。"
-    },
-
     "mino": {
       "format": "openai",
       "endpoint": "https://token-plan-sgp.xiaomimimo.com/v1/chat/completions",
-      "model": "mimo-v2.5-pro",
+      "model": "mimo-v2.5",
       "apiKey": "",
       "_note": "真实 API Key 填到 config/api.config.local.json 的 providers.mino.apiKey。"
     },

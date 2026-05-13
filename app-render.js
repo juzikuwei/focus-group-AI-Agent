@@ -3,7 +3,7 @@
    ============================================================ */
 
 import { $, state } from "./app-state.js";
-import { escapeHtml, escapeAttr, markdownToHtml } from "./app-markdown.js";
+import { escapeHtml, markdownToHtml } from "./app-markdown.js";
 
 export function renderPersonaGrid(container, personas) {
   if (!personas.length) {
@@ -20,6 +20,7 @@ export function renderPersonaGrid(container, personas) {
 }
 
 function personaCardHtml(persona, index) {
+  const concerns = persona.concerns || [];
   return `
     <article class="persona-card" data-color="${index % 9}">
       <header class="persona-head">
@@ -28,22 +29,18 @@ function personaCardHtml(persona, index) {
           <strong>${escapeHtml(persona.name)}</strong>
           <span class="segment">${escapeHtml(persona.segment)}</span>
         </div>
-        <span class="age-pill">${Number(persona.age) || 30} 岁</span>
+        <span class="role-pill">${escapeHtml(persona.discussionRole || "真实用户")}</span>
       </header>
-      <p class="persona-bio">${escapeHtml(persona.job)}，收入${escapeHtml(persona.income)}。${escapeHtml(persona.motivation)}。</p>
-      <div class="persona-depth">
-        ${personaInsight("场景", persona.usageScenario)}
-        ${personaInsight("标准", persona.decisionCriteria)}
-        ${personaInsight("阻碍", persona.dealBreaker)}
+      <p class="persona-bio">${escapeHtml(persona.snapshot || buildLegacyPersonaBio(persona))}</p>
+      <div class="persona-decision-grid">
+        ${personaInsight("现在", persona.currentAlternative || persona.usageScenario)}
+        ${personaInsight("触发", persona.switchTrigger || persona.decisionCriteria)}
+        ${personaInsight("价格", persona.budgetAnchor || legacyBudgetAnchor(persona))}
+        ${personaInsight("证据", persona.evidenceNeeded || persona.dealBreaker)}
       </div>
-      <div class="metric-list">
-        ${metric("价格敏感", persona.priceSensitivity, "var(--rose)")}
-        ${metric("尝鲜意愿", persona.adoption, "var(--green)")}
-        ${metric("怀疑程度", persona.skepticism, "var(--amber)")}
-      </div>
-      <p class="persona-style">"${escapeHtml(persona.speakingStyle)}"</p>
+      ${persona.speakingStyle ? `<p class="persona-style">${escapeHtml(persona.speakingStyle)}</p>` : ""}
       <div class="tag-row">
-        ${(persona.concerns || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}
+        ${concerns.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}
       </div>
     </article>
   `;
@@ -59,15 +56,22 @@ function personaInsight(label, value) {
   `;
 }
 
-function metric(label, value, color) {
-  const v = Number(value) || 0;
-  return `
-    <div class="metric">
-      <span>${label}</span>
-      <div class="meter"><span style="width:${v}%;background:${color}"></span></div>
-      <b>${v}</b>
-    </div>
-  `;
+function buildLegacyPersonaBio(persona) {
+  return [
+    persona.age ? `${Number(persona.age)} 岁` : "",
+    persona.job,
+    persona.motivation,
+  ]
+    .filter(Boolean)
+    .join("，") || "目标用户，关注真实使用价值";
+}
+
+function legacyBudgetAnchor(persona) {
+  const sensitivity = Number(persona.priceSensitivity);
+  if (Number.isNaN(sensitivity)) return "";
+  if (sensitivity >= 75) return "必须接近日常替代成本";
+  if (sensitivity <= 35) return "愿为确定价值付溢价";
+  return "对照现有替代方案判断";
 }
 
 function avatarChar(name) {
@@ -75,9 +79,12 @@ function avatarChar(name) {
   return trimmed ? trimmed.charAt(0) : "?";
 }
 
-function personaColorIndex(personasArray, name) {
-  const idx = personasArray.findIndex((p) => p.name === name);
-  return idx >= 0 ? idx % 9 : 0;
+function buildPersonaColorMap(personasArray) {
+  const map = new Map();
+  (personasArray || []).forEach((persona, idx) => {
+    if (persona?.name) map.set(persona.name, idx % 9);
+  });
+  return map;
 }
 
 export function renderChatLog(container, messages) {
@@ -87,6 +94,7 @@ export function renderChatLog(container, messages) {
     return;
   }
   container.classList.remove("empty-state-soft");
+  const colorMap = buildPersonaColorMap(state.personas);
   let lastRound = 0;
   container.innerHTML = messages
     .map((message) => {
@@ -99,7 +107,7 @@ export function renderChatLog(container, messages) {
       const isError = message.segment === "解析失败";
       const colorIdx = isModerator
         ? ""
-        : ` data-color="${personaColorIndex(state.personas, message.speaker)}"`;
+        : ` data-color="${colorMap.get(message.speaker) ?? 0}"`;
       const cls = isError ? "message error" : `message${isModerator ? " moderator" : ""}`;
       return `
         ${divider}
@@ -175,7 +183,7 @@ function renderSourceCard(card, index) {
   const id = card.id || `S${index + 1}`;
   const url = safeExternalUrl(card.url || "");
   const titleHtml = url
-    ? `<a href="${escapeAttr(url)}" target="_blank" rel="noreferrer">${escapeHtml(id)}｜${escapeHtml(title)}</a>`
+    ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(id)}｜${escapeHtml(title)}</a>`
     : `${escapeHtml(id)}｜${escapeHtml(title)}`;
 
   return `
@@ -251,15 +259,13 @@ function renderReportContent(container, data) {
   container.classList.remove("empty-state-soft");
 
   const rounds = new Set(messages.map((m) => m.round)).size;
-  const avgPrice = personas.length
-    ? Math.round(personas.reduce((s, p) => s + (Number(p.priceSensitivity) || 0), 0) / personas.length)
-    : 0;
+  const roleCount = new Set(personas.map((p) => p.discussionRole || p.segment).filter(Boolean)).size;
 
   const signals = `
     <div class="signal-row">
       <div class="signal"><span>受访者</span><strong>${personas.length}</strong></div>
       <div class="signal"><span>讨论轮次</span><strong>${rounds}</strong></div>
-      <div class="signal"><span>平均价格敏感</span><strong>${avgPrice}</strong></div>
+      <div class="signal"><span>讨论角色</span><strong>${roleCount}</strong></div>
     </div>
   `;
   container.innerHTML = signals + markdownToHtml(markdown);

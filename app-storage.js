@@ -18,10 +18,21 @@ const STORAGE_PROJECTS_KEY = "focus-group-mvp:projects";
 export const PROJECTS_CAP = 30;
 export const RECENT_DISPLAY = 6;
 
+let saveDraftTimer = null;
+const SAVE_DRAFT_DEBOUNCE_MS = 300;
+
+let projectsCache = null;
+
 export function saveDraft() {
-  try {
-    localStorage.setItem(STORAGE_DRAFT_KEY, JSON.stringify(getRawConfig()));
-  } catch {}
+  if (saveDraftTimer) window.clearTimeout(saveDraftTimer);
+  saveDraftTimer = window.setTimeout(() => {
+    saveDraftTimer = null;
+    try {
+      localStorage.setItem(STORAGE_DRAFT_KEY, JSON.stringify(getRawConfig()));
+    } catch (error) {
+      console.warn("草稿保存失败：", error);
+    }
+  }, SAVE_DRAFT_DEBOUNCE_MS);
 }
 
 export function loadDraft() {
@@ -34,18 +45,22 @@ export function loadDraft() {
 }
 
 export function loadProjects() {
+  if (projectsCache !== null) return projectsCache;
   try {
     const raw = localStorage.getItem(STORAGE_PROJECTS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    projectsCache = Array.isArray(parsed) ? parsed : [];
   } catch {
-    return [];
+    projectsCache = [];
   }
+  return projectsCache;
 }
 
 export function saveProjects(projects) {
+  const trimmed = projects.slice(0, PROJECTS_CAP);
+  projectsCache = trimmed;
   try {
-    localStorage.setItem(STORAGE_PROJECTS_KEY, JSON.stringify(projects.slice(0, PROJECTS_CAP)));
+    localStorage.setItem(STORAGE_PROJECTS_KEY, JSON.stringify(trimmed));
   } catch (error) {
     console.warn("项目保存失败：", error);
   }

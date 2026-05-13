@@ -39,9 +39,8 @@ const focusGroup = createFocusGroupService({ promptStore, llm, searchClient });
 const routes = {
   "POST /api/personas": focusGroup.handlePersonas,
   "POST /api/moderator-guide": focusGroup.handleModeratorGuide,
-  "POST /api/session": focusGroup.handleSession,
-  "POST /api/session/round": focusGroup.handleSessionRound,
-  "POST /api/report": focusGroup.handleReport,
+  "POST /api/evidence-pack": focusGroup.handleEvidencePack,
+  "POST /api/session/round/stream": focusGroup.handleSessionRoundStream,
   "POST /api/report/stream": focusGroup.handleReportStream,
   "POST /api/quick-fill": focusGroup.handleQuickFill,
 };

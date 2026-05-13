@@ -8,7 +8,6 @@ import {
   defaultData,
   fields,
   getConfig,
-  getRawConfig,
   setConfig,
   buildTopics,
   getCompletedRoundCount,
@@ -26,7 +25,7 @@ import {
   loadProjectIntoState,
 } from "./app-storage.js";
 import { postJson, postJsonStream, showToast } from "./app-api.js";
-import { escapeHtml, escapeAttr } from "./app-markdown.js";
+import { escapeHtml } from "./app-markdown.js";
 import {
   renderPersonaGrid,
   renderChatLog,
@@ -40,6 +39,11 @@ import { copyReport, downloadReport } from "./app-export.js";
 
 const RUN_PANELS = ["personas", "session", "report"];
 
+let runSpinnerEl = null;
+let runStatusEl = null;
+const getRunSpinner = () => runSpinnerEl || (runSpinnerEl = document.querySelector(".run-spinner"));
+const getRunStatus = () => runStatusEl || (runStatusEl = document.querySelector(".run-status"));
+
 /* ============================================================
    View switching
    ============================================================ */
@@ -49,7 +53,7 @@ function setView(name) {
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
   const target = $("view" + name.charAt(0).toUpperCase() + name.slice(1));
   if (target) target.classList.add("active");
-  window.scrollTo({ top: 0, behavior: "instant" });
+  window.scrollTo(0, 0);
 }
 
 /* ============================================================
@@ -78,10 +82,10 @@ function renderRecentProjects() {
       const personasCount = (project.personas || []).length;
       const messageCount = (project.messages || []).length;
       return `
-        <article class="recent-card" data-id="${escapeAttr(project.id)}">
+        <article class="recent-card" data-id="${escapeHtml(project.id)}">
           <header class="recent-card-head">
             ${statusBadge}
-            <button class="recent-delete" type="button" data-action="delete" data-id="${escapeAttr(project.id)}" aria-label="删除项目">×</button>
+            <button class="recent-delete" type="button" data-action="delete" data-id="${escapeHtml(project.id)}" aria-label="删除项目">×</button>
           </header>
           <h3 class="recent-name">${escapeHtml(project.name || "未命名项目")}</h3>
           <p class="recent-concept">${escapeHtml(concept)}${concept.length >= 64 ? "…" : ""}</p>
@@ -93,25 +97,26 @@ function renderRecentProjects() {
       `;
     })
     .join("");
+}
 
-  grid.querySelectorAll(".recent-card").forEach((card) => {
-    card.addEventListener("click", (e) => {
-      if (e.target.closest("[data-action='delete']")) return;
-      const id = card.dataset.id;
-      handleRecentClick(id);
-    });
-  });
-
-  grid.querySelectorAll("[data-action='delete']").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.id;
+function bindRecentProjectsDelegation() {
+  const grid = $("recentGrid");
+  if (!grid || grid.dataset.delegated === "true") return;
+  grid.dataset.delegated = "true";
+  grid.addEventListener("click", (event) => {
+    const deleteBtn = event.target.closest("[data-action='delete']");
+    if (deleteBtn) {
+      event.stopPropagation();
+      const id = deleteBtn.dataset.id;
       if (confirm("确定删除该项目？此操作不可撤销。")) {
         deleteProjectById(id);
         renderRecentProjects();
         showToast("项目已删除");
       }
-    });
+      return;
+    }
+    const card = event.target.closest(".recent-card");
+    if (card) handleRecentClick(card.dataset.id);
   });
 }
 
@@ -281,16 +286,20 @@ const stageMeta = {
     detail: "AI 正在根据你的产品概念生成多名差异化虚拟受访者，约需 10-30 秒。",
   },
   modeChoice: {
-    headline: "请选择访谈方式",
-    detail: "准备阶段已完成。你可以一步一轮慢慢推进，也可以直接跑完整场访谈。",
+    headline: "请选择继续方式",
+    detail: "准备阶段已完成。极速完整访谈会一次性跑完；逐轮深访适合手动控制节奏。",
   },
   session: {
     headline: "焦点小组讨论中…",
     detail: "主持人正在按议程引导讨论，受访者按各自人设发言。这一步耗时最长，请耐心等待。",
   },
   sessionDirect: {
-    headline: "直接到位模式运行中…",
-    detail: "系统会先做桌面研究资料包，再一次性生成完整访谈。这一步可能需要 1-3 分钟。",
+    headline: "极速完整访谈运行中…",
+    detail: "系统会跳过额外桌面研究，直接用受访者画像和议题蓝图生成完整访谈。",
+  },
+  sessionDirectSearch: {
+    headline: "网络搜索增强运行中…",
+    detail: "系统会先检索公开资料并整理资料包，再生成完整访谈和报告。",
   },
   sessionStep: {
     headline: "正在进行第 {round} 轮…",
@@ -375,11 +384,12 @@ function setRunStatus(headline, detail, error = false) {
   $("runHeadline").textContent = headline;
   $("runDetail").textContent = detail;
   $("runHeadline").classList.toggle("is-error", error);
-  document.querySelector(".run-spinner").classList.toggle("is-error", error);
+  const spinner = getRunSpinner();
+  if (spinner) spinner.classList.toggle("is-error", error);
 }
 
 function setRunStatusVisible(visible) {
-  const status = document.querySelector(".run-status");
+  const status = getRunStatus();
   if (status) status.hidden = !visible;
 }
 
@@ -411,64 +421,6 @@ function stopRunTimer() {
   updateRunMeta();
 }
 
-function stopDirectModeProgress() {
-  if (state.directProgressTimerId) {
-    window.clearInterval(state.directProgressTimerId);
-    state.directProgressTimerId = null;
-  }
-}
-
-function startDirectModeProgress() {
-  stopDirectModeProgress();
-  const startedAt = Date.now();
-  const steps = [
-    {
-      after: 0,
-      label: "规划搜索资料",
-      headline: "正在规划桌面研究…",
-      detail: "AI 正在根据产品概念、目标受众和议题生成搜索关键词。",
-    },
-    {
-      after: 7000,
-      label: "搜索公开资料",
-      headline: "正在搜索公开资料…",
-      detail: "系统正在检索竞品、价格、用户评论、常见痛点和替代方案。",
-    },
-    {
-      after: 22000,
-      label: "整理资料包",
-      headline: "正在整理外部资料包…",
-      detail: "AI 正在把网页结果压缩成 sourceCards、市场信号、购买阻力和可展示材料。",
-    },
-    {
-      after: 55000,
-      label: "生成完整访谈",
-      headline: "正在生成完整访谈实录…",
-      detail: "主持人会把资料包作为访谈前刺激材料，受访者基于人设和材料作出反应。",
-    },
-    {
-      after: 95000,
-      label: "校验访谈结构",
-      headline: "正在校验访谈结构…",
-      detail: "系统正在等待模型返回完整 JSON。搜索启用时，直接到位会比普通模式更慢。",
-    },
-  ];
-  let appliedIndex = -1;
-
-  const apply = () => {
-    const elapsed = Date.now() - startedAt;
-    const index = steps.reduce((result, step, stepIndex) => (elapsed >= step.after ? stepIndex : result), 0);
-    if (index === appliedIndex) return;
-    appliedIndex = index;
-    const step = steps[index];
-    setStageTimerLabel(step.label);
-    setRunStatus(step.headline, step.detail);
-  };
-
-  apply();
-  state.directProgressTimerId = window.setInterval(apply, 1000);
-}
-
 function updateRunMeta() {
   if (!state.runStartedAt) return;
   const now = Date.now();
@@ -484,7 +436,8 @@ function formatDuration(ms) {
 }
 
 function setSpinnerVisible(visible) {
-  document.querySelector(".run-spinner").style.visibility = visible ? "visible" : "hidden";
+  const spinner = getRunSpinner();
+  if (spinner) spinner.style.visibility = visible ? "visible" : "hidden";
 }
 
 function showSection(name, show = true) {
@@ -572,54 +525,105 @@ async function runPersonasStage(config, runToken) {
     setActiveRunPanel("personas");
     persistCurrent("draft");
 
-    setStageTimerLabel("生成主持指南");
-    setRunStatus("正在完成访谈准备…", "这一步还没有开始正式访谈。系统正在生成主持指南，完成后你再选择一步一轮或直接到位。");
-    const guideResp = await postJson("/api/moderator-guide", {
-      config,
-      personas: state.personas,
-      topics: state.topics,
-    }, { signal: state.abortController?.signal });
-    if (!isCurrentRun(runToken)) return;
-    state.moderatorGuide = guideResp.moderatorGuide || null;
-    state.participantStates = guideResp.participantStates || [];
-    state.contextState = guideResp.contextState || null;
-    persistCurrent("draft");
-
-    state.runSubStage = "mode-choice";
-    setStageTimerLabel("等待选择");
     setStage("session", "active");
-    setRunStatus(stageMeta.modeChoice.headline, stageMeta.modeChoice.detail);
-    setSpinnerVisible(false);
     showSection("session", true);
     setActiveRunPanel("session");
-    showControlPanel("ctrlModeChoice");
+
+    if (config.runModePreference === "step") {
+      state.runSubStage = "moderator-guide-running";
+      setStageTimerLabel("启动逐轮深访");
+      setRunStatus("逐轮深访启动中…", "受访者已生成，系统会先补充主持指南，然后进入第 1 轮访谈。");
+      await runOneRound();
+      return;
+    }
+
+    state.runSubStage = "session-running";
+    setStageTimerLabel("启动完整访谈");
+    setRunStatus("极速完整访谈启动中…", "受访者已生成，系统会自动连续生成各轮访谈并继续产出报告。");
+    await runSessionAllAtOnce();
   } catch (error) {
     handleRunError(error, runToken);
   }
 }
 
 async function runSessionAllAtOnce() {
-  const config = getConfig();
-  const capacityMessage = getDirectCapacityMessage(config, state.personas.length, state.topics.length);
-  if (capacityMessage) {
-    setSpinnerVisible(false);
-    setRunStatus("直接到位规模过大", capacityMessage, true);
-    showControlPanel("ctrlModeChoice");
-    showToast("当前规模建议使用一步一轮");
-    return;
-  }
-
-  const runToken = ensureActiveRun("直接到位访谈");
+  const runToken = ensureActiveRun("极速完整访谈");
   state.runMode = "all";
   state.runSubStage = "session-running";
   setActiveRunPanel("session");
   hideAllControlPanels();
   setSpinnerVisible(true);
-  setRunStatus(stageMeta.sessionDirect.headline, stageMeta.sessionDirect.detail);
-  startDirectModeProgress();
+  setRunStatus("极速完整访谈启动中…", "系统会自动连续生成每一轮，消息会边生成边显示。");
 
   try {
-    const sessionResp = await postJson("/api/session", {
+    const ready = await ensureModeratorGuideForStep(runToken);
+    if (!ready) return;
+    const evidenceReady = await ensureEvidencePackForAllRun(runToken);
+    if (!evidenceReady) return;
+
+    state.runSubStage = "session-running";
+    setActiveRunPanel("session");
+    hideAllControlPanels();
+    setSpinnerVisible(true);
+
+    for (let roundIndex = state.currentRound; roundIndex < state.topics.length; roundIndex += 1) {
+      const roundNumber = roundIndex + 1;
+      const topic = state.topics[roundIndex] || `第 ${roundNumber} 轮话题`;
+      setStageTimerLabel(`生成第 ${roundNumber} 轮`);
+      const completed = await streamSessionRound({
+        runToken,
+        roundNumber,
+        topic,
+        headline: `极速完整访谈：第 ${roundNumber}/${state.topics.length} 轮`,
+        initialDetail: "本轮消息会逐批显示，结束后自动进入下一轮。",
+      });
+      if (!completed || !isCurrentRun(runToken)) return;
+    }
+
+    setStage("session", "done");
+    await runReportStage(runToken);
+  } catch (error) {
+    handleRunError(error, runToken);
+  }
+}
+
+async function ensureModeratorGuideForStep(runToken) {
+  if (state.moderatorGuide && state.participantStates.length && state.contextState) return true;
+  state.runSubStage = "moderator-guide-running";
+  setStageTimerLabel("生成主持指南");
+  setRunStatus("正在生成主持指南…", "逐轮深访需要更细的主持计划和受访者立场记忆，完成后会自动进入本轮访谈。");
+  setSpinnerVisible(true);
+
+  const guideResp = await postJson("/api/moderator-guide", {
+    config: getConfig(),
+    personas: state.personas,
+    topics: state.topics,
+  }, { signal: state.abortController?.signal });
+  if (!isCurrentRun(runToken)) return false;
+
+  state.moderatorGuide = guideResp.moderatorGuide || null;
+  state.participantStates = guideResp.participantStates || [];
+  state.contextState = guideResp.contextState || null;
+  persistCurrent("draft");
+  return true;
+}
+
+async function ensureEvidencePackForAllRun(runToken) {
+  const config = getConfig();
+  if (!config.useSearchEnhancement) return true;
+  if (state.evidencePack?.status === "used" && Array.isArray(state.contextState?.externalFindings) && state.contextState.externalFindings.length) {
+    updateEvidencePackButton();
+    return true;
+  }
+
+  state.runSubStage = "evidence-pack-running";
+  setStageTimerLabel("整理外部资料包");
+  setRunStatus("正在整理外部资料包…", "系统正在检索公开资料并整理来源卡片，完成后会继续生成访谈。");
+  setSpinnerVisible(true);
+  hideAllControlPanels();
+
+  try {
+    const data = await postJson("/api/evidence-pack", {
       config,
       personas: state.personas,
       topics: state.topics,
@@ -627,48 +631,42 @@ async function runSessionAllAtOnce() {
       participantStates: state.participantStates,
       contextState: state.contextState,
     }, { signal: state.abortController?.signal });
-    if (!isCurrentRun(runToken)) return;
-    state.messages = sessionResp.messages || [];
-    state.participantStates = Array.isArray(sessionResp.participantStates)
-      ? sessionResp.participantStates
-      : state.participantStates;
-    state.contextState = sessionResp.contextState || state.contextState;
-    state.evidencePack = sessionResp.evidencePack || state.evidencePack;
-    updateEvidencePackButton();
-    state.currentRound = state.topics.length;
-    setStage("session", "done");
-    renderChatLog($("previewChat"), state.messages);
-    scrollChatPreviewToBottom();
-    persistCurrent("draft");
-    stopDirectModeProgress();
+    if (!isCurrentRun(runToken)) return false;
 
-    await runReportStage(runToken);
+    state.evidencePack = data.evidencePack || null;
+    state.contextState = data.contextState || state.contextState;
+    updateEvidencePackButton();
+    persistCurrent("draft");
+
+    const sourceCount = Array.isArray(state.evidencePack?.sourceCards) ? state.evidencePack.sourceCards.length : 0;
+    if (state.evidencePack?.status === "used" && sourceCount > 0) {
+      showToast(`已整理 ${sourceCount} 条外部资料`);
+    } else if (state.evidencePack?.status === "failed") {
+      showToast("搜索增强失败，已继续生成访谈");
+    } else {
+      showToast("未生成可用资料包，已继续生成访谈");
+    }
+    return true;
   } catch (error) {
-    stopDirectModeProgress();
-    handleRunError(error, runToken);
+    if (error?.name === "AbortError") throw error;
+    console.warn(error);
+    showToast(`搜索增强失败，已继续：${(error.message || "").slice(0, 60)}`);
+    return true;
   }
 }
 
-function getDirectCapacityMessage(config, personaCount, topicCount) {
-  const load = Number(personaCount) * Number(topicCount);
-  const limit = getDirectSessionCapacity(config);
-  if (load <= limit) return "";
-  return `当前为 ${personaCount} 人 × ${topicCount} 轮，超过直接到位一次性生成的稳定上限 ${limit}。请改用一步一轮，或降低人数/轮次后再使用直接到位。`;
-}
-
-function getDirectSessionCapacity(config = {}) {
-  const depth = String(config.outputDepth || "");
-  if (depth.includes("深入")) return 30;
-  if (depth.includes("简洁")) return 56;
-  return 42;
-}
-
 async function runOneRound() {
-  const config = getConfig();
   const nextRound = state.currentRound + 1;
   const runToken = ensureActiveRun(`生成第 ${nextRound} 轮`);
   state.runMode = "step";
   setActiveRunPanel("session");
+  try {
+    const ready = await ensureModeratorGuideForStep(runToken);
+    if (!ready) return;
+  } catch (error) {
+    handleRunError(error, runToken);
+    return;
+  }
   const topic = state.topics[state.currentRound];
 
   state.runSubStage = "session-step-running";
@@ -683,26 +681,14 @@ async function runOneRound() {
   );
 
   try {
-    const resp = await postJson("/api/session/round", {
-      config,
-      personas: state.personas,
-      topic,
+    const completed = await streamSessionRound({
+      runToken,
       roundNumber: nextRound,
-      priorMessages: state.messages,
-      moderatorGuide: state.moderatorGuide,
-      participantStates: state.participantStates,
-      contextState: state.contextState,
-    }, { signal: state.abortController?.signal });
-    if (!isCurrentRun(runToken)) return;
-    const newMessages = (resp.messages || []).map((m) => ({ ...m, round: nextRound }));
-    state.messages = [...state.messages, ...newMessages];
-    state.participantStates = Array.isArray(resp.participantStates) ? resp.participantStates : state.participantStates;
-    state.contextState = resp.contextState || state.contextState;
-    state.currentRound = nextRound;
-    renderChatLog($("previewChat"), state.messages);
-    scrollChatPreviewToBottom();
-    updateRoundBadge();
-    persistCurrent("draft");
+      topic,
+      headline: stageMeta.sessionStep.headline.replace("{round}", nextRound),
+      initialDetail: stageMeta.sessionStep.detail,
+    });
+    if (!completed || !isCurrentRun(runToken)) return;
 
     if (state.currentRound >= state.topics.length) {
       setStage("session", "done");
@@ -721,6 +707,70 @@ async function runOneRound() {
   } catch (error) {
     handleRunError(error, runToken);
   }
+}
+
+async function streamSessionRound({ runToken, roundNumber, topic, headline, initialDetail }) {
+  const config = getConfig();
+  const priorMessages = [...state.messages];
+  const streamedMessages = [];
+  let finalRoundResult = null;
+
+  setRunStatus(headline, initialDetail);
+  await postJsonStream("/api/session/round/stream", {
+    config,
+    personas: state.personas,
+    topics: state.topics,
+    topic,
+    roundNumber,
+    priorMessages,
+    moderatorGuide: state.moderatorGuide,
+    participantStates: state.participantStates,
+    contextState: state.contextState,
+  }, {
+    signal: state.abortController?.signal,
+    onEvent: (event) => {
+      if (!isCurrentRun(runToken)) return;
+      if (event.type === "status") {
+        const nextSpeakers = Array.isArray(event.nextSpeakers) && event.nextSpeakers.length
+          ? `下一波：${event.nextSpeakers.join("、")}`
+          : "主持人正在判断本轮是否收束";
+        setRunStatus(
+          headline,
+          event.action === "summarize" ? "主持人判断本轮信息已经足够，正在收束总结…" : nextSpeakers,
+        );
+        return;
+      }
+      if (event.type === "messages") {
+        const incoming = (event.messages || []).map((message) => ({ ...message, round: roundNumber }));
+        if (!incoming.length) return;
+        streamedMessages.push(...incoming);
+        state.messages = [...priorMessages, ...streamedMessages];
+        renderChatLog($("previewChat"), state.messages);
+        scrollChatPreviewToBottom();
+        const latest = incoming[incoming.length - 1];
+        setRunStatus(headline, `${latest.speaker} 正在发言，内容会逐步出现在下方。`);
+        return;
+      }
+      if (event.type === "done") {
+        finalRoundResult = event;
+      }
+    },
+  });
+
+  if (!isCurrentRun(runToken)) return false;
+  const newMessages = (finalRoundResult?.messages || streamedMessages).map((message) => ({ ...message, round: roundNumber }));
+  state.messages = [...priorMessages, ...newMessages];
+  state.moderatorGuide = finalRoundResult?.moderatorGuide || state.moderatorGuide;
+  state.participantStates = Array.isArray(finalRoundResult?.participantStates)
+    ? finalRoundResult.participantStates
+    : state.participantStates;
+  state.contextState = finalRoundResult?.contextState || state.contextState;
+  state.currentRound = roundNumber;
+  renderChatLog($("previewChat"), state.messages);
+  scrollChatPreviewToBottom();
+  updateRoundBadge();
+  persistCurrent("draft");
+  return true;
 }
 
 function updateRoundBadge() {
@@ -818,7 +868,6 @@ async function runReportStage(runToken = null) {
 
 function handleRunError(error, runToken = state.runToken) {
   if (!isCurrentRun(runToken)) return;
-  stopDirectModeProgress();
   if (error?.name === "AbortError") {
     state.runSubStage = "cancelled";
     state.isRunning = false;
@@ -829,9 +878,8 @@ function handleRunError(error, runToken = state.runToken) {
   console.warn(error);
   state.lastFailedSubStage = state.runSubStage;
   state.runSubStage = "error";
-  if (state.personas.length === 0) setStage("personas", "error");
-  else if (state.messages.length === 0) setStage("session", "error");
-  else setStage("report", "error");
+  const failedStage = mapSubStageToStage(state.lastFailedSubStage);
+  setStage(failedStage, "error");
   setSpinnerVisible(false);
   setRunStatus("出错了", error.message?.slice(0, 200) || "API 调用失败，请稍后重试", true);
   stopRunTimer();
@@ -846,6 +894,15 @@ function isCurrentRun(runToken) {
   return state.runToken === runToken;
 }
 
+function mapSubStageToStage(subStage) {
+  if (subStage === "report-running") return "report";
+  if (subStage === "session-running" || subStage === "session-step-running" || subStage === "moderator-guide-running" || subStage === "evidence-pack-running") return "session";
+  if (subStage === "personas-running") return "personas";
+  if (state.personas.length === 0) return "personas";
+  if (state.messages.length === 0) return "session";
+  return "report";
+}
+
 function ensureActiveRun(timerLabel) {
   if (!state.isRunning || !state.abortController) {
     state.isRunning = true;
@@ -857,7 +914,6 @@ function ensureActiveRun(timerLabel) {
 }
 
 function cancelActiveRun() {
-  stopDirectModeProgress();
   if (state.abortController) {
     state.abortController.abort();
   }
@@ -886,7 +942,6 @@ async function retryCurrentStep() {
   const runToken = state.runToken;
   const failedSubStage = state.lastFailedSubStage;
   state.lastFailedSubStage = null;
-  stopDirectModeProgress();
   hideAllControlPanels();
   setSpinnerVisible(true);
   startRunTimer("准备重试");
@@ -896,6 +951,9 @@ async function retryCurrentStep() {
       await runPersonasStage(getConfig(), runToken);
     } else if (failedSubStage === "session-running") {
       await runSessionAllAtOnce();
+    } else if (failedSubStage === "moderator-guide-running") {
+      if (state.runMode === "all") await runSessionAllAtOnce();
+      else await runOneRound();
     } else if (failedSubStage === "session-step-running") {
       await runOneRound();
     } else if (failedSubStage === "report-running") {
@@ -1024,6 +1082,7 @@ function init() {
   $("copyReportBtn").addEventListener("click", copyReport);
   $("downloadReportBtn").addEventListener("click", downloadReport);
 
+  bindRecentProjectsDelegation();
   renderRecentProjects();
 
   setView("home");

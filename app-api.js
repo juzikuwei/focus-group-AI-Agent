@@ -43,7 +43,13 @@ export async function postJsonStream(url, payload, options = {}) {
   const processLine = (line) => {
     const trimmed = line.trim();
     if (!trimmed) return;
-    const event = JSON.parse(trimmed);
+    let event;
+    try {
+      event = JSON.parse(trimmed);
+    } catch {
+      console.warn("[stream] skipping non-JSON NDJSON line:", trimmed.slice(0, 200));
+      return;
+    }
     finalEvent = event;
     options.onEvent?.(event);
     if (event.type === "error") {

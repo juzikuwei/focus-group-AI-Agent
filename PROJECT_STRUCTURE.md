@@ -213,7 +213,7 @@ config/
 }
 ```
 
-可以参考 `config/search.config.local.example.json` 创建。该文件已被 `.gitignore` 忽略。
+可以参考 `config/search.config.local.example.json` 创建。`search.config.local.json` 已被 `.gitignore` 忽略；example 文件不含真实 Key，可提交到仓库。
 
 ## `lib/`
 
@@ -229,7 +229,7 @@ lib/
 ├─ validators.js              请求参数校验
 ├─ focus-group-service.js     路由 handler + 主流程编排
 ├─ text-utils.js              字符串工具 + mapWithConcurrency
-├─ interview-profiles.js      主持风格 / 输出深度 profile
+├─ interview-profiles.js      默认访谈 / 报告规则 profile
 ├─ token-estimator.js         各阶段 token 上限估算
 ├─ normalizers.js             受访者 / 主持指南 / 消息规范化
 ├─ anonymizer.js              报告匿名化（R1/R2/…）
@@ -324,21 +324,20 @@ Prompt 文件读取与模板渲染模块。
 主要职责：
 
 - 暴露工厂 `createFocusGroupService({ promptStore, llm, searchClient })`。
-- 7 个路由 handler：
+- 6 个路由 handler：
   - `POST /api/personas`：生成受访者。
   - `POST /api/moderator-guide`：生成主持指南和初始受访者立场记忆。
-  - `POST /api/session`：直接生成完整访谈（含搜索增强 evidencePack）。
-  - `POST /api/session/round`：多段式一步一轮深访。
-  - `POST /api/report`：一次性生成洞察报告。
+  - `POST /api/evidence-pack`：搜索增强开启时生成外部资料包，并注入 `contextState.externalFindings`。
+  - `POST /api/session/round/stream`：流式生成单轮访谈，逐轮深访和极速完整访谈共用。
   - `POST /api/report/stream`：流式生成洞察报告，按 NDJSON 事件（`start` / `chunk` / `done` / `error`）推送，前端默认走这个端点。
   - `POST /api/quick-fill`：一句话补全项目配置（含搜索增强）。
-- 一步一轮编排：`generateDeepSessionRound` → 主持人开场 + 第一组受访者 + 主持人追问 + 第二组受访者 + 主持人小结，并并发更新立场记忆。
-- 资料包获取：`buildEvidencePackForDirectSession` / `buildQuickFillResearch`（依赖 `searchClient`）。
+- 逐轮深访编排：`generateDeepSessionRound` → 主持人开场 + 全员初始立场 + 受访者自由讨论 + 主持人判断收束 + 主持人小结，并并发更新立场记忆。
+- 资料包获取：`buildEvidencePackForSession` / `buildQuickFillResearch`（依赖 `searchClient`）。
 - 调用 `context-engine.js` 组装主持人、受访者和报告所需上下文。
 
 不再放：
 
-- 风格 / 深度 profile（已搬到 `interview-profiles.js`）。
+- 默认访谈 / 报告规则 profile（已搬到 `interview-profiles.js`）。
 - 各类 normalize* 与 token 估算（已搬到 `normalizers.js` / `token-estimator.js`）。
 - 报告续写（已搬到 `report-builder.js`）。
 - evidencePack / quick-fill / 匿名化的纯工具函数（已分别搬到对应文件）。
@@ -349,9 +348,9 @@ Prompt 文件读取与模板渲染模块。
 
 ### `lib/interview-profiles.js`
 
-风格 / 深度 profile：`getStyleProfile`（温和 / 真实 / 犀利 / 专业中立）、`getDepthProfile`（简洁 / 标准 / 深入）、`buildInterviewControls` 拼装到 prompt 模板的字段。
+默认访谈 / 报告规则 profile：`getStyleProfile`、`getDepthProfile`、`buildInterviewControls` 拼装到 prompt 模板的字段；不再保留可选风格或深度档位。
 
-调主持口吻、追问强度或输出长度的字数区间，改这里。
+调追问规则、证据颗粒度或输出长度的字数区间，改这里。
 
 ### `lib/token-estimator.js`
 
@@ -371,7 +370,7 @@ LLM 输出规范化：`normalizePersonas` / `normalizeModeratorGuide` / `normali
 
 ### `lib/evidence-pack.js`
 
-`evidencePack` 数据结构规范化、外部资料注入 `contextState.externalFindings`、Tavily 搜索结果整理。
+`evidencePack` 数据结构规范化、搜索 query / 来源卡片等通用字段清洗，以及把资料包来源摘要注入 `contextState.externalFindings`。
 
 ### `lib/quick-fill.js`
 
@@ -379,7 +378,7 @@ LLM 输出规范化：`normalizePersonas` / `normalizeModeratorGuide` / `normali
 
 ### `lib/report-builder.js`
 
-工厂 `createReportBuilder({ llm })` → 返回 `generateReportMarkdown(prompt, outputDepth)`。
+工厂 `createReportBuilder({ llm })` → 返回 `generateReportMarkdown(prompt, options)`。
 
 内部含：
 
@@ -426,16 +425,13 @@ prompts/
 ├─ moderator-guide.md
 ├─ search-plan.md
 ├─ evidence-pack.md
-├─ focus-group-session.md
-├─ session-round.md
 ├─ moderator-turn.md
 ├─ participant-turn.md
 ├─ participant-state-updater.md
 ├─ report-analyst.md
 ├─ quick-fill.md
 ├─ quick-fill-search-plan.md
-├─ moderator.md
-└─ participant.md
+└─ round-facilitator-decision.md
 ```
 
 ### `persona-generator.md`
@@ -446,10 +442,12 @@ prompts/
 
 - 基础画像。
 - 细分类型。
-- 使用场景。
-- 购买标准。
-- 关键阻碍。
-- 顾虑和说话风格。
+- 一句话背景。
+- 当前替代方案。
+- 转换触发。
+- 价格锚点。
+- 证据门槛。
+- 讨论角色、顾虑和说话风格。
 
 ### `moderator-guide.md`
 
@@ -467,54 +465,19 @@ prompts/
 
 ### `search-plan.md`
 
-直接到位工具增强模式使用。
-
-根据项目配置和访谈议题生成搜索计划，输出搜索 query、用途和类型。
+网络搜索增强使用。根据项目配置和访谈议题生成搜索计划，输出搜索 query、用途和类型。
 
 ### `evidence-pack.md`
 
-直接到位工具增强模式使用。
-
-把搜索 API 的结果整理成结构化 `evidencePack`，包括：
-
-- 来源卡片 `sourceCards`。
-- 可核查事实。
-- 用户信号和常见抱怨。
-- 竞品/替代方案。
-- 购买阻力。
-- 主持人可展示给受访者的刺激材料说明。
-- 后续访谈应验证的问题。
-
-### `focus-group-session.md`
-
-直接到位模式使用。
-
-一次性生成完整多轮访谈。
-
-会读取：
-
-- 项目配置。
-- 议题。
-- 受访者。
-- 主持指南。
-- 受访者立场记忆。
-- 结构化上下文 `contextState`。
-- 外部资料包 `evidencePack`。
-
-### `session-round.md`
-
-保留的单轮访谈 prompt。
-
-当前主要深访流程已经改用 `moderator-turn.md` 和 `participant-turn.md` 分段生成。
+网络搜索增强使用。把搜索 API 的结果整理成结构化 `evidencePack`，包括来源卡片、可核查事实、用户信号、竞品/替代方案、购买阻力和访谈需验证问题。
 
 ### `moderator-turn.md`
 
-一步一轮深访中的主持人发言。
+逐轮深访中的主持人发言。
 
 用于：
 
 - 开场主问题。
-- 针对性追问。
 - 本轮小结。
 
 会读取：
@@ -527,9 +490,9 @@ prompts/
 
 ### `participant-turn.md`
 
-一步一轮深访中的受访者分组回应。
+逐轮深访中的受访者回应和自由讨论。
 
-用于让指定受访者围绕主持人的最新问题进行深度回应。
+用于让指定受访者围绕主持人的引导、其他受访者观点或本轮分歧继续讨论。
 
 会强调：
 
@@ -576,26 +539,24 @@ prompts/
 
 为 `/api/quick-fill` 生成搜索查询计划。仅当搜索工具启用时使用；失败会回退到 `buildFallbackQuickFillQueries` 给出的默认查询。
 
-### `moderator.md` / `participant.md`
+### `round-facilitator-decision.md`
 
-早期保留 prompt。
-
-当前主流程不强依赖它们，可以后续清理或改为备用模板。
+后台主持人判断本轮是否继续自由讨论，输出下一波发言者、讨论焦点或收束信号。
 
 ## 当前数据流
 
-### 一步一轮模式
+### 逐轮深访模式
 
 ```text
 前端 startRun
   -> /api/personas
   -> /api/moderator-guide
-  -> 用户选择一步一轮
-  -> /api/session/round
+  -> 用户选择逐轮深访
+  -> /api/session/round/stream
        -> 主持人开场
-       -> 第一组受访者回应
-       -> 主持人追问
-       -> 第二组受访者回应
+       -> 全员初始立场
+       -> 受访者自由讨论
+       -> 主持人后台判断是否继续
        -> 主持人小结
        -> 更新受访者立场记忆
        -> 更新 contextState
@@ -603,18 +564,16 @@ prompts/
   -> /api/report/stream（流式逐段返回 Markdown）
 ```
 
-### 直接到位模式
+### 极速完整访谈模式
 
 ```text
 前端 startRun
   -> /api/personas
   -> /api/moderator-guide
-  -> 用户选择直接到位
-  -> /api/session
-       -> 如果搜索工具启用：生成 search plan
-       -> 调用搜索 API
-       -> 整理 evidencePack
-       -> 基于 evidencePack 生成完整访谈
+  -> 如果勾选网络搜索增强：/api/evidence-pack
+  -> 自动连续调用 /api/session/round/stream
+       -> 每轮消息按 NDJSON 事件逐批推送到前端
+       -> 每轮更新受访者立场记忆和 contextState
   -> /api/report/stream（流式逐段返回 Markdown）
 ```
 
@@ -629,7 +588,7 @@ prompts/
 ```
 
 不要让每个受访者随意搜索，否则会变成“专家访谈”，不像消费者焦点小组。
-现在直接到位模式已经接入 `lib/search.js`、`search-plan.md` 和 `evidence-pack.md`。后续如果要把搜索也接进一步一轮，应先把搜索摘要写入 `contextState.externalFindings`，再由主持人围绕事实卡片追问。
+当前搜索有两条用途：`/api/quick-fill` 用于一句话项目扩写；`/api/evidence-pack` 用于极速完整访谈前整理外部资料包，并把来源摘要写入 `contextState.externalFindings`，再由主持人围绕事实卡片引导受访者讨论。
 
 ### 前端模块化
 

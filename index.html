@@ -78,38 +78,34 @@
 
             <label>
               访谈问题（每行一个，3-10 个；不足会自动补默认议题）
-              <textarea id="discussionTopics" rows="5">第一眼是否觉得这个产品有用？
+              <textarea id="discussionTopics" rows="4">第一眼是否觉得这个产品有用？
 399 元是否能接受？
-哪些功能最有吸引力？
-最大的购买顾虑是什么？
-如果只能改一个地方，应该改什么？</textarea>
+最大的购买顾虑是什么？</textarea>
             </label>
 
-            <div class="form-grid form-grid-4">
+            <div class="run-options">
+              <label>
+                访谈方式
+                <select id="runModePreference">
+                  <option value="all" selected>极速完整访谈</option>
+                  <option value="step">逐轮深访</option>
+                </select>
+              </label>
               <label>
                 受访者数量
                 <input id="participantCount" type="number" min="5" max="10" step="1" value="5" />
               </label>
               <label>
                 探讨轮数
-                <input id="roundCount" type="number" min="3" max="10" step="1" value="5" />
+                <input id="roundCount" type="number" min="3" max="10" step="1" value="3" />
               </label>
-              <label>
-                主持风格
-                <select id="tone">
-                  <option value="真实">真实自然</option>
-                  <option value="犀利" selected>犀利追问</option>
-                  <option value="温和">温和探索</option>
-                  <option value="专家型">专业中立</option>
-                </select>
-              </label>
-              <label>
-                输出深度
-                <select id="outputDepth">
-                  <option value="标准" selected>标准</option>
-                  <option value="深入">深入</option>
-                  <option value="简洁">简洁</option>
-                </select>
+              <label class="search-toggle">
+                <input id="useSearchEnhancement" type="checkbox" />
+                <span class="toggle-control" aria-hidden="true"></span>
+                <span class="toggle-copy">
+                  <strong>启用网络搜索增强</strong>
+                  <small>只影响开始访谈后的极速完整访谈，不影响上方生成项目；会增加生成时间。</small>
+                </span>
               </label>
             </div>
           </div>
@@ -207,19 +203,19 @@
 
             <div class="mode-choice-inline" id="ctrlModeChoice" hidden>
               <div class="control-text">
-                <strong>请选择访谈方式</strong>
-                <span>两种方式都会跑完全部轮次，区别在于你是否手动控制节奏。</span>
+                <strong>请选择继续方式</strong>
+                <span>极速完整访谈会一次性跑完；逐轮深访适合需要手动控制节奏的项目。</span>
               </div>
               <div class="mode-grid">
-                <button class="mode-btn" type="button" data-mode="step">
-                  <span class="mode-icon">🐢</span>
-                  <strong>一步一轮</strong>
-                  <span class="mode-desc">你来控制每轮节奏，可逐轮查看发言、随时停下回看</span>
-                </button>
                 <button class="mode-btn" type="button" data-mode="all">
                   <span class="mode-icon">⚡</span>
-                  <strong>直接到位</strong>
-                  <span class="mode-desc">先整理外部资料包，再一次性跑完整场访谈，适合快速产出报告</span>
+                  <strong>极速完整访谈</strong>
+                  <span class="mode-desc">一次性跑完整场访谈；启用网络搜索时会先整理外部资料包</span>
+                </button>
+                <button class="mode-btn" type="button" data-mode="step">
+                  <span class="mode-icon">🐢</span>
+                  <strong>逐轮深访</strong>
+                  <span class="mode-desc">你来控制每轮节奏，可逐轮查看发言、随时停下回看</span>
                 </button>
               </div>
             </div>

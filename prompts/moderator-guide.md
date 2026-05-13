@@ -26,23 +26,22 @@ JSON 结构必须完全符合：
 2. researchObjectives 写 3-5 条，聚焦“是否真的有需求、为什么抗拒、什么证据能推动购买”。
 3. coreHypotheses 写 3-5 条，每条必须可被访谈验证，不要写空泛判断。
 4. roundPlan 必须覆盖下方所有议题，每轮都要有明确 objective、keyQuestion、mustProbe、shallowAnswerSignals。
-5. probeStrategies 要告诉主持人如何处理浅回答、价格异议、功能兴趣、替代方案、受访者互相矛盾。
-6. redFlags 写主持过程中需要警惕的偏差，例如受访者只迎合、只说功能好、不谈真实场景。
-7. 每个字符串保持短句，避免长篇段落。
-8. 必须执行“主持风格规则”和“输出深度规则”：风格决定怎么追问，深度决定每轮验证到什么证据颗粒度。
+5. 如果某轮议题是“组合议题”或包含多个编号问题，keyQuestion 要把这些问题组织成一个连贯主问题，mustProbe 要覆盖每个编号问题的关键验证点。
+6. 主持人需要在给定轮数内尽量问完所有核心问题；可以把相邻且联系强的问题放在同一轮，但不要把无关问题硬凑在一起。
+7. probeStrategies 要告诉主持人如何处理浅回答、价格异议、功能兴趣、替代方案、受访者互相矛盾。
+8. redFlags 写主持过程中需要警惕的偏差，例如受访者只迎合、只说功能好、不谈真实场景。
+9. 每个字符串保持短句，避免长篇段落。
+10. 必须执行“访谈执行规则”和“证据颗粒度规则”：追问要具体，证据要能支持后续报告判断。
 
 项目名称：{{projectName}}
 产品概念：{{productConcept}}
 核心卖点：{{coreSellingPoints}}
 目标受众：{{targetAudience}}
-主持风格：{{tone}}
-输出深度：{{outputDepth}}
+访谈执行规则：
+{{interviewRulesText}}
 
-主持风格规则：
-{{styleRulesText}}
-
-输出深度规则：
-{{depthRulesText}}
+证据颗粒度规则：
+{{evidenceRulesText}}
 
 议题 JSON：
 {{topicsJson}}
