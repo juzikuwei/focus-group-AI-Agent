@@ -97,58 +97,70 @@
           </div>
 
           <div class="form-body">
-            <label>
-              项目名称
-              <input id="projectName" type="text" value="智能随行咖啡杯上市前访谈" />
-            </label>
-
-            <label>
-              产品概念
-              <textarea id="productConcept" rows="4">一款可通过手机 App 控温、记录饮水和咖啡因摄入、支持无线充电的智能随行咖啡杯，目标是帮助通勤人群保持合适饮用温度并管理咖啡摄入。</textarea>
-            </label>
-
-            <div class="form-grid">
-              <label>
-                核心卖点
-                <textarea id="coreSellingPoints" rows="3">45-65 摄氏度精确控温；App 记录咖啡因摄入；杯身轻量防漏；无线充电底座；售价 399 元。</textarea>
-              </label>
-              <label>
-                目标受众
-                <textarea id="targetAudience" rows="3">一二线城市 22-40 岁通勤白领、咖啡爱好者、注重效率和生活品质的人群。</textarea>
+            <div class="detail-panel detail-panel-title">
+              <span class="detail-panel-kicker">项目基础</span>
+              <label class="title-field">
+                项目名称
+                <input id="projectName" type="text" value="智能随行咖啡杯上市前访谈" />
               </label>
             </div>
 
-            <label>
-              访谈问题（每行一个，3-10 个；不足会自动补默认议题）
-              <textarea id="discussionTopics" rows="4">第一眼是否觉得这个产品有用？
+            <div class="detail-layout">
+              <div class="detail-panel detail-panel-main">
+                <span class="detail-panel-kicker">产品假设</span>
+                <label>
+                  产品概念
+                  <textarea id="productConcept" rows="4">一款可通过手机 App 控温、记录饮水和咖啡因摄入、支持无线充电的智能随行咖啡杯，目标是帮助通勤人群保持合适饮用温度并管理咖啡摄入。</textarea>
+                </label>
+              </div>
+
+              <div class="detail-panel detail-panel-side">
+                <span class="detail-panel-kicker">市场判断</span>
+                <label>
+                  核心卖点
+                  <textarea id="coreSellingPoints" rows="3">45-65 摄氏度精确控温；App 记录咖啡因摄入；杯身轻量防漏；无线充电底座；售价 399 元。</textarea>
+                </label>
+                <label>
+                  目标受众
+                  <textarea id="targetAudience" rows="3">一二线城市 22-40 岁通勤白领、咖啡爱好者、注重效率和生活品质的人群。</textarea>
+                </label>
+              </div>
+            </div>
+
+            <div class="detail-panel detail-panel-interview">
+              <span class="detail-panel-kicker">访谈设计</span>
+              <label>
+                访谈问题（每行一个，3-10 个；不足会自动补默认议题）
+                <textarea id="discussionTopics" rows="4">第一眼是否觉得这个产品有用？
 399 元是否能接受？
 最大的购买顾虑是什么？</textarea>
-            </label>
+              </label>
 
-            <div class="run-options">
-              <label>
-                访谈方式
-                <select id="runModePreference">
-                  <option value="all" selected>极速完整访谈</option>
-                  <option value="step">逐轮深访</option>
-                </select>
-              </label>
-              <label>
-                受访者数量
-                <input id="participantCount" type="number" min="5" max="10" step="1" value="5" />
-              </label>
-              <label>
-                探讨轮数
-                <input id="roundCount" type="number" min="3" max="10" step="1" value="3" />
-              </label>
-              <label class="search-toggle">
-                <input id="useSearchEnhancement" type="checkbox" />
-                <span class="toggle-control" aria-hidden="true"></span>
-                <span class="toggle-copy">
-                  <strong>启用网络搜索增强</strong>
-                  <small>只影响开始访谈后的极速完整访谈，不影响上方生成项目；会增加生成时间。</small>
-                </span>
-              </label>
+              <div class="run-options">
+                <label>
+                  访谈模式
+                  <select id="runModePreference">
+                    <option value="all" selected>一键跑完</option>
+                    <option value="step">逐轮推进</option>
+                  </select>
+                </label>
+                <label>
+                  受访者数量
+                  <input id="participantCount" type="number" min="5" max="10" step="1" value="5" />
+                </label>
+                <label>
+                  探讨轮数
+                  <input id="roundCount" type="number" min="3" max="10" step="1" value="3" />
+                </label>
+                <label class="search-toggle">
+                  <input id="useSearchEnhancement" type="checkbox" />
+                  <span class="toggle-control" aria-hidden="true"></span>
+                  <span class="toggle-copy">
+                    <strong>启用网络搜索增强</strong>
+                    <small>只影响开始访谈后的极速完整访谈，不影响上方生成项目；会增加生成时间。</small>
+                  </span>
+                </label>
+              </div>
             </div>
           </div>
 
