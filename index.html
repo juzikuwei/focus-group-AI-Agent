@@ -8,23 +8,65 @@
   </head>
   <body>
     <div class="app-shell">
+      <div class="shell-topbar">
+        <div class="brand-lockup" aria-label="Focus Lab">
+          <span class="brand-mark">FG</span>
+          <span class="brand-copy">
+            <strong>Focus Lab</strong>
+            <small>虚拟焦点小组</small>
+          </span>
+        </div>
+        <div class="topbar-meta" aria-label="系统状态">
+          <span>Local draft</span>
+          <span>LLM powered</span>
+        </div>
+      </div>
 
       <!-- ======================= HOME VIEW ======================= -->
       <section class="view view-home active" id="viewHome">
         <header class="hero">
-          <p class="eyebrow">Focus Group Simulator</p>
-          <h1>虚拟焦点小组深度访谈系统</h1>
-          <p class="subtitle">
-            基于大语言模型的多角色访谈模拟工具：让 AI 扮演不同人设的虚拟受访者，围绕产品概念展开多轮讨论，自动汇总抗性、期待与心理痛点。
-          </p>
+          <div class="hero-copy">
+            <p class="eyebrow">Research cockpit</p>
+            <h1>虚拟焦点小组深度访谈系统</h1>
+            <p class="subtitle">
+              把产品概念转成一场可追踪的多角色深访，快速看到用户抗性、期待、心理痛点和价格判断。
+            </p>
+            <div class="hero-signals" aria-label="访谈规模">
+              <span><strong>5-10</strong> 受访者</span>
+              <span><strong>3-10</strong> 探讨轮次</span>
+              <span><strong>Markdown</strong> 洞察报告</span>
+            </div>
+          </div>
+          <div class="hero-visual" aria-hidden="true">
+            <div class="signal-board">
+              <span class="signal-line signal-line-a"></span>
+              <span class="signal-line signal-line-b"></span>
+              <span class="signal-line signal-line-c"></span>
+              <span class="signal-node signal-node-a"></span>
+              <span class="signal-node signal-node-b"></span>
+              <span class="signal-node signal-node-c"></span>
+              <div class="signal-card signal-card-a">
+                <small>Barrier</small>
+                <strong>价格锚点</strong>
+              </div>
+              <div class="signal-card signal-card-b">
+                <small>Trigger</small>
+                <strong>使用场景</strong>
+              </div>
+              <div class="signal-card signal-card-c">
+                <small>Proof</small>
+                <strong>信任证据</strong>
+              </div>
+            </div>
+          </div>
         </header>
 
         <!-- ===== Quick Fill ===== -->
         <section class="quick-fill card">
           <div class="card-heading">
-            <span class="badge badge-accent">✨ 快捷创建</span>
+            <span class="badge badge-accent">快速生成</span>
             <h2>用一句话描述你的产品想法</h2>
-            <p class="card-sub">交给 AI 一键填好产品概念、卖点、受众和访谈问题，再手动微调即可。</p>
+            <p class="card-sub">生成产品概念、卖点、目标受众和访谈问题，之后可以继续手动微调。</p>
           </div>
           <div class="quick-fill-row">
             <input
@@ -49,9 +91,9 @@
         <!-- ===== Form ===== -->
         <section class="form-section card">
           <div class="card-heading">
-            <span class="badge badge-slate">📝 项目详情</span>
+            <span class="badge badge-slate">项目详情</span>
             <h2>填写或编辑项目细节</h2>
-            <p class="card-sub">所有字段都可以直接编辑。完成后点"开始访谈"即可进入模拟。</p>
+            <p class="card-sub">用清晰的概念、受众和问题，换取更稳定的访谈输出。</p>
           </div>
 
           <div class="form-body">
@@ -111,15 +153,15 @@
           </div>
 
           <div class="form-actions">
-            <button id="resetFormBtn" class="ghost" type="button">↺ 恢复示例</button>
-            <button id="startBtn" class="primary primary-lg" type="button">开始访谈 →</button>
+            <button id="resetFormBtn" class="ghost" type="button">恢复示例</button>
+            <button id="startBtn" class="primary primary-lg" type="button">开始访谈</button>
           </div>
         </section>
 
         <!-- ===== Recent ===== -->
         <section class="recent-section card">
           <div class="card-heading">
-            <span class="badge badge-slate">📂 最近项目</span>
+            <span class="badge badge-slate">项目档案</span>
             <h2 id="recentTitle">本地保存的项目</h2>
             <p class="card-sub">点击卡片即可恢复项目；已完成的项目可直接查看报告。</p>
           </div>
@@ -134,8 +176,11 @@
       <!-- ======================= RUNNING VIEW ======================= -->
       <section class="view view-running" id="viewRunning">
         <header class="run-header">
-          <button id="cancelRunBtn" class="ghost back-btn" type="button">← 返回主界面</button>
-          <h2 id="runProjectName">访谈进行中</h2>
+          <button id="cancelRunBtn" class="ghost back-btn" type="button">返回主界面</button>
+          <div class="run-title">
+            <p class="run-kicker">Live interview</p>
+            <h2 id="runProjectName">访谈进行中</h2>
+          </div>
         </header>
 
         <div class="stage-bar">
@@ -208,12 +253,12 @@
               </div>
               <div class="mode-grid">
                 <button class="mode-btn" type="button" data-mode="all">
-                  <span class="mode-icon">⚡</span>
+                  <span class="mode-icon">FAST</span>
                   <strong>极速完整访谈</strong>
                   <span class="mode-desc">一次性跑完整场访谈；启用网络搜索时会先整理外部资料包</span>
                 </button>
                 <button class="mode-btn" type="button" data-mode="step">
-                  <span class="mode-icon">🐢</span>
+                  <span class="mode-icon">STEP</span>
                   <strong>逐轮深访</strong>
                   <span class="mode-desc">你来控制每轮节奏，可逐轮查看发言、随时停下回看</span>
                 </button>

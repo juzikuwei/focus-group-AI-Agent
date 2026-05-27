@@ -14,6 +14,7 @@ const { createFocusGroupService } = require("./lib/focus-group-service");
 const { createSearchClient } = require("./lib/search");
 const { sendJson } = require("./lib/http");
 const { serveStatic } = require("./lib/static");
+const { toClientError } = require("./lib/error-response");
 
 const PORT = Number(process.env.PORT || 5173);
 const HOST = process.env.HOST || "localhost";
@@ -101,20 +102,12 @@ const server = http.createServer(async (req, res) => {
 
     return serveStatic(ROOT, req, res);
   } catch (error) {
-    if (error.name === "AbortError") {
-      if (!res.writableEnded && !res.destroyed) {
-        return sendJson(res, 499, { error: "Request cancelled" });
-      }
-      return undefined;
+    const clientError = toClientError(error);
+    if (clientError.shouldLog) console.error(error);
+    if (!res.writableEnded && !res.destroyed) {
+      return sendJson(res, clientError.statusCode, clientError.payload);
     }
-    if (error.statusCode && error.statusCode < 500) {
-      return sendJson(res, error.statusCode, { error: error.message });
-    }
-    if (isSafeConfigError(error)) {
-      return sendJson(res, 400, { error: error.message });
-    }
-    console.error(error);
-    return sendJson(res, 502, { error: "AI 服务调用失败，请检查服务端日志或稍后重试。" });
+    return undefined;
   }
 });
 
@@ -139,12 +132,4 @@ function getRequestPath(req) {
   } catch {
     return "/";
   }
-}
-
-function isSafeConfigError(error) {
-  const message = String(error?.message || "");
-  return (
-    message.includes("没有配置 endpoint") ||
-    (message.includes("缺少") && message.includes("API Key"))
-  );
 }

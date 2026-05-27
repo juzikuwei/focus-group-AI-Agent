@@ -34,11 +34,12 @@ JSON 结构必须完全符合：
 
 要求：
 1. 只能依据搜索结果整理，不要编造没有来源的信息。
-2. sourceCards 要尽量详细，每个来源最多 5 条 keyFacts、5 条 userSignals、4 条 quoteSnippets。
+2. sourceCards 最多 8 个；每个来源最多 3 条 keyFacts、3 条 userSignals、2 条 quoteSnippets。
 3. quoteSnippets 必须短，不要长段复制网页内容。
 4. 如果来源只是推广页，reliability 通常为 medium 或 low；如果是官方文档/权威报告/大型平台评论页，可以更高。
 5. stimulusScript 要说明“我们给大家看过一些公开网页、产品页和评论片段”，不要说受访者自己真实浏览过。
 6. openQuestions 要转化为主持人可追问的问题，例如价格接受区间、替代方案、信任证据、使用场景、拒绝条件。
+7. 如果信息很多，优先保证 JSON 完整合法，宁可少写来源和短句。
 
 今天日期：{{today}}
 项目：{{projectName}}

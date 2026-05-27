@@ -21,6 +21,7 @@ export function renderPersonaGrid(container, personas) {
 
 function personaCardHtml(persona, index) {
   const concerns = persona.concerns || [];
+  const role = persona.discussionRole || "真实用户";
   return `
     <article class="persona-card" data-color="${index % 9}">
       <header class="persona-head">
@@ -29,7 +30,7 @@ function personaCardHtml(persona, index) {
           <strong>${escapeHtml(persona.name)}</strong>
           <span class="segment">${escapeHtml(persona.segment)}</span>
         </div>
-        <span class="role-pill">${escapeHtml(persona.discussionRole || "真实用户")}</span>
+        <span class="role-pill" title="${escapeHtml(role)}">${escapeHtml(role)}</span>
       </header>
       <p class="persona-bio">${escapeHtml(persona.snapshot || buildLegacyPersonaBio(persona))}</p>
       <div class="persona-decision-grid">
