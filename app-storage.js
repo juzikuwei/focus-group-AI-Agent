@@ -4,7 +4,6 @@
 
 import {
   state,
-  fields,
   defaultData,
   getRawConfig,
   setConfig,
