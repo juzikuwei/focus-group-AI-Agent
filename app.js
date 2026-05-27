@@ -108,7 +108,7 @@ function bindRecentProjectsDelegation() {
     if (deleteBtn) {
       event.stopPropagation();
       const id = deleteBtn.dataset.id;
-      if (confirm("确定删除该项目？此操作不可撤销。")) {
+      if (window.confirm("确定删除该项目？此操作不可撤销。")) {
         deleteProjectById(id);
         renderRecentProjects();
         showToast("项目已删除");
@@ -474,7 +474,7 @@ async function startRun() {
   }
 
   state.isRunning = true;
-  state.abortController = new AbortController();
+  state.abortController = new window.AbortController();
   state.runToken += 1;
   state.lastFailedSubStage = null;
   state.personas = [];
@@ -906,7 +906,7 @@ function mapSubStageToStage(subStage) {
 function ensureActiveRun(timerLabel) {
   if (!state.isRunning || !state.abortController) {
     state.isRunning = true;
-    state.abortController = new AbortController();
+    state.abortController = new window.AbortController();
     state.runToken += 1;
     startRunTimer(timerLabel || "继续访谈");
   }
@@ -937,7 +937,7 @@ async function retryCurrentStep() {
   }
 
   state.isRunning = true;
-  state.abortController = new AbortController();
+  state.abortController = new window.AbortController();
   state.runToken += 1;
   const runToken = state.runToken;
   const failedSubStage = state.lastFailedSubStage;
@@ -1016,7 +1016,7 @@ function init() {
 
   $("startBtn").addEventListener("click", startRun);
   $("resetFormBtn").addEventListener("click", () => {
-    if (!confirm("确定恢复示例数据？当前编辑的内容将丢失。")) return;
+    if (!window.confirm("确定恢复示例数据？当前编辑的内容将丢失。")) return;
     setConfig(defaultData);
     saveDraft();
     state.projectId = null;
@@ -1034,7 +1034,7 @@ function init() {
 
   $("cancelRunBtn").addEventListener("click", () => {
     if (state.isRunning) {
-      if (!confirm("访谈仍在进行，确定返回？已经生成的内容将保存为草稿。")) return;
+      if (!window.confirm("访谈仍在进行，确定返回？已经生成的内容将保存为草稿。")) return;
       cancelActiveRun();
     }
     setView("home");

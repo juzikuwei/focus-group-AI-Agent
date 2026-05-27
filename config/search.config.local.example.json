@@ -1,8 +1,0 @@
-{
-  "enabled": true,
-  "providers": {
-    "tavily": {
-      "apiKey": "tvly-YOUR_API_KEY"
-    }
-  }
-}

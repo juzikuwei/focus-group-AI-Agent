@@ -26,7 +26,7 @@ export async function downloadReport() {
 
   document.body.classList.add("printing-report");
   // 等一帧确保 print CSS 应用到 DOM
-  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => window.requestAnimationFrame(resolve));
 
   let cleanedUp = false;
   const cleanup = () => {
