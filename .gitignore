@@ -1,5 +1,6 @@
 .env
 node_modules/
+.claude/
 config/api.config.local.json
 config/*.local.json
 *.log

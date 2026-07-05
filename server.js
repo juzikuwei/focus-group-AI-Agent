@@ -7,9 +7,10 @@ const {
   buildProviders,
   resolveActiveProviderName,
   resolveActiveSearchProviderName,
+  normalizeProviderName,
 } = require("./lib/config");
 const { createPromptStore } = require("./lib/prompts");
-const { createLlmClient } = require("./lib/llm");
+const { createLlmClient, createLlmClientWithOverrides } = require("./lib/llm");
 const { createFocusGroupService } = require("./lib/focus-group-service");
 const { createSearchClient } = require("./lib/search");
 const { sendJson } = require("./lib/http");
@@ -56,6 +57,11 @@ const server = http.createServer(async (req, res) => {
 
   try {
     const urlPath = getRequestPath(req);
+
+    if (urlPath.startsWith("/api/")) {
+      applyRequestClientOverrides(req);
+    }
+
     const route = routes[`${req.method} ${urlPath}`];
     if (route) {
       return await route(req, res, sendJson);
@@ -76,6 +82,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && urlPath === "/api/config") {
+      const visibleSearchClient = req.userSearchClient || searchClient;
       return sendJson(res, 200, {
         activeProvider: activeProvider.name,
         providers: Object.fromEntries(
@@ -92,7 +99,7 @@ const server = http.createServer(async (req, res) => {
           ]),
         ),
         prompts: promptStore.listPromptFiles(),
-        search: searchClient.getStatus(),
+        search: visibleSearchClient.getStatus(),
       });
     }
 
@@ -132,4 +139,55 @@ function getRequestPath(req) {
   } catch {
     return "/";
   }
+}
+
+function applyRequestClientOverrides(req) {
+  const settings = readClientSettings(req);
+  const providerName = normalizeProviderName(settings.apiProvider);
+  const apiKey = settings.apiKey;
+  if (apiKey) {
+    const userProvider = (providerName && providers[providerName]) || activeProvider;
+    req.userLlm = createLlmClientWithOverrides(userProvider, {
+      apiProvider: providerName || activeProviderName,
+      apiKey,
+      apiBaseUrl: settings.apiBaseUrl,
+      model: settings.model,
+    });
+  }
+  req.userSearchClient = buildUserSearchClient(settings);
+}
+
+function readClientSettings(req) {
+  return {
+    apiProvider: firstHeader(req, "x-fg-api-provider"),
+    apiKey: firstHeader(req, "x-fg-api-key"),
+    apiBaseUrl: firstHeader(req, "x-fg-api-base-url"),
+    model: firstHeader(req, "x-fg-api-model"),
+    searchProvider: firstHeader(req, "x-fg-search-provider"),
+    searchApiKey: firstHeader(req, "x-fg-search-api-key"),
+  };
+}
+
+function firstHeader(req, name) {
+  const value = req.headers[name];
+  if (Array.isArray(value)) return String(value[0] || "").trim();
+  return String(value || "").trim();
+}
+
+function buildUserSearchClient(settings) {
+  const searchProviderName = String(settings?.searchProvider || "").trim();
+  const searchApiKey = String(settings?.searchApiKey || "").trim();
+  if (!searchProviderName || !searchApiKey) return null;
+
+  const baseProvider = searchProviders[searchProviderName] || activeSearchProvider;
+  if (!baseProvider) return null;
+
+  return createSearchClient({
+    config: searchConfig,
+    activeProviderName: searchProviderName,
+    activeProvider: {
+      ...baseProvider,
+      apiKey: searchApiKey,
+    },
+  });
 }

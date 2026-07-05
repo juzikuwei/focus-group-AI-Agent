@@ -9,7 +9,7 @@
     "改完后必须重启 server（Ctrl+C 然后 npm start）。"
   ],
 
-  "active": "mino",
+  "active": "mimo",
 
   "providers": {
 
@@ -17,30 +17,63 @@
       "format": "openai",
       "endpoint": "https://api.openai.com/v1/chat/completions",
       "model": "gpt-4o-mini",
-      "apiKey": "",
-      "_note": "OpenAI 兼容格式。把 endpoint/model/apiKey 三项改成对应厂商的即可，比如：",
-      "_examples": {
-        "deepseek": { "endpoint": "https://api.deepseek.com/v1/chat/completions", "model": "deepseek-chat" },
-        "moonshot": { "endpoint": "https://api.moonshot.cn/v1/chat/completions", "model": "moonshot-v1-8k" },
-        "groq":     { "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "llama-3.3-70b-versatile" },
-        "zhipu":    { "endpoint": "https://open.bigmodel.cn/api/paas/v4/chat/completions", "model": "glm-4-flash" },
-        "qwen":     { "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", "model": "qwen-turbo" },
-        "openrouter": { "endpoint": "https://openrouter.ai/api/v1/chat/completions", "model": "openai/gpt-4o-mini" }
-      }
+      "apiKey": ""
     },
 
-    "mino": {
+    "deepseek": {
+      "format": "openai",
+      "endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "model": "deepseek-chat",
+      "apiKey": ""
+    },
+
+    "moonshot": {
+      "format": "openai",
+      "endpoint": "https://api.moonshot.cn/v1/chat/completions",
+      "model": "moonshot-v1-8k",
+      "apiKey": ""
+    },
+
+    "groq": {
+      "format": "openai",
+      "endpoint": "https://api.groq.com/openai/v1/chat/completions",
+      "model": "llama-3.3-70b-versatile",
+      "apiKey": ""
+    },
+
+    "zhipu": {
+      "format": "openai",
+      "endpoint": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+      "model": "glm-4-flash",
+      "apiKey": ""
+    },
+
+    "qwen": {
+      "format": "openai",
+      "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+      "model": "qwen-turbo",
+      "apiKey": ""
+    },
+
+    "openrouter": {
+      "format": "openai",
+      "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "model": "openai/gpt-4o-mini",
+      "apiKey": ""
+    },
+
+    "mimo": {
       "format": "openai",
       "endpoint": "https://token-plan-sgp.xiaomimimo.com/v1/chat/completions",
       "model": "mimo-v2.5",
       "apiKey": "",
-      "_note": "真实 API Key 填到 config/api.config.local.json 的 providers.mino.apiKey。"
+      "_note": "真实 API Key 填到 config/api.config.local.json 的 providers.mimo.apiKey。旧 providers.mino 会自动兼容。"
     },
 
     "anthropic": {
       "format": "anthropic",
       "endpoint": "https://api.anthropic.com/v1/messages",
-      "model": "claude-sonnet-4-5-20250929",
+      "model": "claude-sonnet-4-6",
       "apiKey": "",
       "_note": "Anthropic Claude 原生格式。Key 从 console.anthropic.com 申请。"
     },
@@ -48,7 +81,7 @@
     "gemini": {
       "format": "gemini",
       "endpoint": "https://generativelanguage.googleapis.com/v1beta/models",
-      "model": "gemini-2.0-flash",
+      "model": "gemini-2.5-flash",
       "apiKey": "",
       "_note": "Google Gemini 原生格式。Key 从 aistudio.google.com 申请，有免费额度。"
     }

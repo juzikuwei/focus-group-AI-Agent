@@ -1,8 +1,8 @@
 /* ============================================================
-   Report copy + print
+   Report copy + PDF download
    ============================================================ */
 
-import { state } from "./app-state.js";
+import { getConfig, state } from "./app-state.js";
 import { showToast } from "./app-api.js";
 
 export async function copyReport() {
@@ -24,23 +24,44 @@ export async function downloadReport() {
     return;
   }
 
-  document.body.classList.add("printing-report");
-  // 等一帧确保 print CSS 应用到 DOM
-  await new Promise((resolve) => window.requestAnimationFrame(resolve));
+  const el = document.getElementById("reportContent");
+  if (!el) {
+    showToast("找不到报告内容");
+    return;
+  }
 
-  let cleanedUp = false;
-  const cleanup = () => {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    document.body.classList.remove("printing-report");
-    window.removeEventListener("afterprint", cleanup);
+  if (typeof window.html2pdf === "undefined") {
+    showToast("PDF 组件未加载，请刷新页面后重试");
+    return;
+  }
+
+  showToast("正在生成 PDF...");
+
+  const projectName = sanitizeFilename(getConfig().projectName || "洞察报告");
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const filename = `${projectName}_${dateStr}.pdf`;
+
+  const opt = {
+    margin: [15, 15, 15, 15],
+    filename,
+    image: { type: "jpeg", quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+    pagebreak: { mode: ["avoid-all", "css", "legacy"] },
   };
 
-  window.addEventListener("afterprint", cleanup);
   try {
-    window.print();
-  } finally {
-    // 兜底：部分浏览器不触发 afterprint，500ms 后强制清理
-    setTimeout(cleanup, 800);
+    await window.html2pdf().set(opt).from(el).save();
+    showToast("PDF 已下载");
+  } catch (err) {
+    console.error("PDF export error:", err);
+    showToast("PDF 导出失败，请重试");
   }
+}
+
+function sanitizeFilename(value) {
+  return String(value || "")
+    .replace(/[\\/:*?"<>|]+/g, "_")
+    .trim()
+    .slice(0, 80) || "洞察报告";
 }

@@ -5,6 +5,83 @@
 import { $, state } from "./app-state.js";
 import { escapeHtml, markdownToHtml } from "./app-markdown.js";
 
+const RADAR_LABELS = ["价格敏感", "创新开放", "品牌忠诚", "理性决策", "社交影响", "使用频率"];
+const RADAR_SIDES = 6;
+const RADAR_CX = 180;
+const RADAR_CY = 160;
+const RADAR_R = 100;
+const RADAR_LEVELS = 5;
+
+function buildRadarMetrics(persona) {
+  if (persona.radarMetrics && persona.radarMetrics.length === RADAR_SIDES) {
+    return persona.radarMetrics.map((v) => Math.max(1, Math.min(10, Number(v) || 5)));
+  }
+  const sensitivity = Number(persona.priceSensitivity);
+  const priceScore = Number.isNaN(sensitivity) ? 5 : Math.round(sensitivity / 10);
+  const segment = String(persona.segment || "").toLowerCase();
+  const bio = String(persona.snapshot || persona.bio || "").toLowerCase();
+  const text = segment + " " + bio;
+  const innovation = /创新|尝鲜|新潮|科技|极客/.test(text) ? 8 : /保守|传统|稳健/.test(text) ? 3 : 5;
+  const loyalty = /品牌|忠诚|固定|习惯/.test(text) ? 7 : /随意|无所谓|换着用/.test(text) ? 3 : 5;
+  const rational = /理性|分析|数据|对比|研究/.test(text) ? 8 : /感性|冲动|直觉|跟风/.test(text) ? 3 : 6;
+  const social = /社交|分享|推荐|影响|kol|意见领袖/.test(text) ? 8 : /独来独往|不太分享/.test(text) ? 3 : 5;
+  const frequency = /每天|高频|日常|经常/.test(text) ? 8 : /偶尔|很少|几乎不/.test(text) ? 3 : 6;
+  return [priceScore, innovation, loyalty, rational, social, frequency];
+}
+
+function radarSvg(metrics, colorIdx) {
+  const angleStep = (2 * Math.PI) / RADAR_SIDES;
+  const startAngle = -Math.PI / 2;
+  const colors = [
+    ["#2f6cff", "rgba(47,108,255,0.12)"],
+    ["#ef4444", "rgba(239,68,68,0.10)"],
+    ["#f59e0b", "rgba(245,158,11,0.10)"],
+    ["#6366f1", "rgba(99,102,241,0.10)"],
+    ["#10b981", "rgba(16,185,129,0.10)"],
+    ["#8b5cf6", "rgba(139,92,246,0.10)"],
+    ["#06b6d4", "rgba(6,182,212,0.10)"],
+    ["#84cc16", "rgba(132,204,22,0.10)"],
+    ["#ec4899", "rgba(236,72,153,0.10)"],
+  ];
+  const [stroke, fill] = colors[colorIdx % colors.length];
+
+  const point = (index, ratio) => {
+    const angle = startAngle + index * angleStep;
+    return [
+      RADAR_CX + RADAR_R * ratio * Math.cos(angle),
+      RADAR_CY + RADAR_R * ratio * Math.sin(angle),
+    ];
+  };
+
+  const gridPaths = [];
+  for (let level = 1; level <= RADAR_LEVELS; level++) {
+    const ratio = level / RADAR_LEVELS;
+    const pts = [];
+    for (let i = 0; i < RADAR_SIDES; i++) pts.push(point(i, ratio));
+    gridPaths.push(`<polygon points="${pts.map((p) => p.join(",")).join(" ")}" fill="none" stroke="rgba(200,210,225,0.4)" stroke-width="0.8"/>`);
+  }
+
+  const axisLines = [];
+  for (let i = 0; i < RADAR_SIDES; i++) {
+    const [x, y] = point(i, 1);
+    axisLines.push(`<line x1="${RADAR_CX}" y1="${RADAR_CY}" x2="${x}" y2="${y}" stroke="rgba(200,210,225,0.35)" stroke-width="0.6"/>`);
+  }
+
+  const dataPts = metrics.map((v, i) => point(i, v / 10));
+  const dataPolygon = `<polygon points="${dataPts.map((p) => p.join(",")).join(" ")}" fill="${fill}" stroke="${stroke}" stroke-width="1.8" stroke-linejoin="round"/>`;
+  const dots = dataPts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.5" fill="${stroke}" stroke="none"/>`).join("");
+
+  const dataDots = dataPts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="${stroke}" stroke="none"/>`).join("");
+
+  const labels = RADAR_LABELS.map((label, i) => {
+    const [x, y] = point(i, 1.18);
+    const anchor = x < RADAR_CX - 8 ? "end" : x > RADAR_CX + 8 ? "start" : "middle";
+    return `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="central" fill="#3d5070" font-size="14" font-weight="700">${label}</text>`;
+  }).join("");
+
+  return `<svg class="persona-radar" viewBox="0 0 360 320">${gridPaths.join("")}${axisLines.join("")}${dataPolygon}${dataDots}${labels}</svg>`;
+}
+
 export function renderPersonaGrid(container, personas) {
   if (!personas.length) {
     container.className = container.className.replace("persona-grid-compact", "").trim();
@@ -22,39 +99,45 @@ export function renderPersonaGrid(container, personas) {
 function personaCardHtml(persona, index) {
   const concerns = persona.concerns || [];
   const role = persona.discussionRole || "真实用户";
+  const current = persona.currentAlternative || persona.usageScenario || "";
+  const trigger = persona.switchTrigger || persona.decisionCriteria || "";
+  const budget = persona.budgetAnchor || legacyBudgetAnchor(persona);
+  const evidence = persona.evidenceNeeded || persona.dealBreaker || "";
+  const metrics = buildRadarMetrics(persona);
+  const seq = index + 1;
+
   return `
-    <article class="persona-card" data-color="${index % 9}">
-      <header class="persona-head">
+    <article class="persona-card" data-color="${index % 9}" data-persona-index="${index}">
+      <div class="persona-header">
         <div class="avatar">${escapeHtml(avatarChar(persona.name))}</div>
-        <div class="persona-id">
-          <strong>${escapeHtml(persona.name)}</strong>
-          <span class="segment">${escapeHtml(persona.segment)}</span>
+        <div class="persona-info">
+          <strong class="persona-name"><span class="persona-seq">${seq}</span>${escapeHtml(persona.name)}</strong>
+          <span class="persona-role">${escapeHtml(role)}</span>
         </div>
-        <span class="role-pill" title="${escapeHtml(role)}">${escapeHtml(role)}</span>
-      </header>
-      <p class="persona-bio">${escapeHtml(persona.snapshot || buildLegacyPersonaBio(persona))}</p>
-      <div class="persona-decision-grid">
-        ${personaInsight("现在", persona.currentAlternative || persona.usageScenario)}
-        ${personaInsight("触发", persona.switchTrigger || persona.decisionCriteria)}
-        ${personaInsight("价格", persona.budgetAnchor || legacyBudgetAnchor(persona))}
-        ${personaInsight("证据", persona.evidenceNeeded || persona.dealBreaker)}
+        ${state.isViewOnly ? '' : `<button class="persona-edit-btn ghost compact-btn" type="button" data-action="edit-persona" data-index="${index}">编辑</button>`}
+      </div>
+      <div class="persona-radar-wrap">
+        ${radarSvg(metrics, index)}
+      </div>
+      <div class="persona-body">
+        <p class="persona-segment">${escapeHtml(persona.segment)}</p>
+        <p class="persona-bio">${escapeHtml(persona.snapshot || buildLegacyPersonaBio(persona))}</p>
+      </div>
+      ${concerns.length ? `<div class="tag-row">${concerns.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}
+      <div class="persona-stats">
+        ${personaStat("当前方案", current)}
+        ${personaStat("核心顾虑", trigger)}
+        ${personaStat("价格锚点", budget)}
+        ${personaStat("决策关键", evidence)}
       </div>
       ${persona.speakingStyle ? `<p class="persona-style">${escapeHtml(persona.speakingStyle)}</p>` : ""}
-      <div class="tag-row">
-        ${concerns.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}
-      </div>
     </article>
   `;
 }
 
-function personaInsight(label, value) {
+function personaStat(label, value) {
   if (!value) return "";
-  return `
-    <div class="persona-insight">
-      <span>${label}</span>
-      <p>${escapeHtml(value)}</p>
-    </div>
-  `;
+  return `<div class="persona-stat"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`;
 }
 
 function buildLegacyPersonaBio(persona) {
@@ -263,13 +346,45 @@ function renderReportContent(container, data) {
   const roleCount = new Set(personas.map((p) => p.discussionRole || p.segment).filter(Boolean)).size;
 
   const signals = `
-    <div class="signal-row">
-      <div class="signal"><span>受访者</span><strong>${personas.length}</strong></div>
-      <div class="signal"><span>讨论轮次</span><strong>${rounds}</strong></div>
-      <div class="signal"><span>讨论角色</span><strong>${roleCount}</strong></div>
+    <div class="report-signals">
+      <div class="report-signal"><span>受访者</span><strong>${personas.length}</strong></div>
+      <div class="report-signal"><span>讨论轮次</span><strong>${rounds}</strong></div>
+      <div class="report-signal"><span>讨论角色</span><strong>${roleCount}</strong></div>
     </div>
   `;
   container.innerHTML = signals + markdownToHtml(markdown);
+  addChartBars(container);
+}
+
+/** Post-process tables: add CSS bar charts for cells containing percentages or scores */
+function addChartBars(container) {
+  container.querySelectorAll("table").forEach((table) => {
+    const rows = Array.from(table.querySelectorAll("tbody tr"));
+    if (rows.length < 2) return;
+
+    rows.forEach((row) => {
+      const cells = Array.from(row.querySelectorAll("td"));
+      cells.forEach((td) => {
+        const text = td.textContent.trim();
+        // Match patterns like "85%", "3.5/5", "4.2 分", "8人"
+        const pctMatch = text.match(/^(\d+(?:\.\d+)?)%$/);
+        if (pctMatch) {
+          const val = parseFloat(pctMatch[1]);
+          td.classList.add("bar-cell");
+          td.innerHTML = `<span class="bar-label">${text}</span><div class="bar-track"><div class="bar-fill" style="--bar-width: ${Math.min(val, 100)}%"></div></div>`;
+          return;
+        }
+        const scoreMatch = text.match(/^(\d+(?:\.\d+)?)\s*[\/分]/);
+        if (scoreMatch) {
+          const val = parseFloat(scoreMatch[1]);
+          const maxVal = text.includes("/") ? parseFloat(text.split("/")[1]) : 5;
+          const pct = Math.round((val / maxVal) * 100);
+          td.classList.add("bar-cell");
+          td.innerHTML = `<span class="bar-label">${text}</span><div class="bar-track"><div class="bar-fill" style="--bar-width: ${Math.min(pct, 100)}%"></div></div>`;
+        }
+      });
+    });
+  });
 }
 
 export function updateEvidencePackButton() {

@@ -5,6 +5,18 @@
 export const $ = (id) => document.getElementById(id);
 
 export const defaultData = {
+  projectName: "",
+  productConcept: "",
+  coreSellingPoints: "",
+  targetAudience: "",
+  discussionTopics: "",
+  participantCount: "5",
+  roundCount: "3",
+  runModePreference: "all",
+  useSearchEnhancement: false,
+};
+
+export const EXAMPLE_DATA = {
   projectName: "智能随行咖啡杯上市前访谈",
   productConcept:
     "一款可通过手机 App 控温、记录饮水和咖啡因摄入、支持无线充电的智能随行咖啡杯，目标是帮助通勤人群保持合适饮用温度并管理咖啡摄入。",
@@ -33,10 +45,13 @@ export const fields = [
 
 export const state = {
   view: "home",
+  navPanel: "dashboard",
+  projectFilter: "all",
   projectId: null,
   personas: [],
   messages: [],
   reportMarkdown: "",
+  reportComplete: false,
   moderatorGuide: null,
   participantStates: [],
   contextState: null,
@@ -60,8 +75,8 @@ export const state = {
 
 export function getConfig() {
   const config = { ...defaultData, ...getVisibleFieldConfig() };
-  config.participantCount = clampNumber(config.participantCount, 5, 10);
-  config.roundCount = clampNumber(config.roundCount, 3, 10);
+  config.participantCount = clampNumber(config.participantCount, 1, 10);
+  config.roundCount = clampNumber(config.roundCount, 1, 10);
   config.runModePreference = config.runModePreference === "step" ? "step" : "all";
   $("participantCount").value = config.participantCount;
   $("roundCount").value = config.roundCount;
@@ -112,7 +127,7 @@ export function clampNumber(value, min, max) {
 }
 
 export function buildTopics(config) {
-  const roundCount = clampNumber(config.roundCount, 3, 10);
+  const roundCount = clampNumber(config.roundCount, 1, 10);
   const userTopics = String(config.discussionTopics || "")
     .split(/\n+/)
     .map((line) => line.trim())

@@ -2,10 +2,42 @@
    API + toast helpers
    ============================================================ */
 
+export const LOCAL_SETTINGS_KEY = "focus-group-local-settings";
+
+export function getLocalSettings() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_SETTINGS_KEY) || "null") || {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveLocalSettings(settings) {
+  localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(settings || {}));
+}
+
+export function clientSettingsHeaders() {
+  const settings = getLocalSettings();
+  const headers = {};
+  const pairs = [
+    ["apiProvider", "X-FG-API-Provider"],
+    ["apiKey", "X-FG-API-Key"],
+    ["apiBaseUrl", "X-FG-API-Base-URL"],
+    ["model", "X-FG-API-Model"],
+    ["searchProvider", "X-FG-Search-Provider"],
+    ["searchApiKey", "X-FG-Search-API-Key"],
+  ];
+  pairs.forEach(([key, header]) => {
+    const value = String(settings[key] || "").trim();
+    if (value) headers[header] = value;
+  });
+  return headers;
+}
+
 export async function postJson(url, payload, options = {}) {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...clientSettingsHeaders() },
     body: JSON.stringify(payload),
     signal: options.signal,
   });
@@ -19,7 +51,7 @@ export async function postJson(url, payload, options = {}) {
 export async function postJsonStream(url, payload, options = {}) {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...clientSettingsHeaders() },
     body: JSON.stringify(payload),
     signal: options.signal,
   });

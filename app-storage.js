@@ -43,6 +43,14 @@ export function loadDraft() {
   }
 }
 
+export function clearDraft() {
+  try {
+    localStorage.removeItem(STORAGE_DRAFT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export function loadProjects() {
   if (projectsCache !== null) return projectsCache;
   try {
@@ -97,6 +105,7 @@ export function buildProjectSnapshot(status) {
     personas: state.personas,
     messages: state.messages,
     reportMarkdown: state.reportMarkdown,
+    reportComplete: !!state.reportComplete,
     moderatorGuide: state.moderatorGuide,
     participantStates: state.participantStates,
     contextState: state.contextState,
@@ -108,9 +117,21 @@ export function buildProjectSnapshot(status) {
 }
 
 export function persistCurrent(status) {
+  const promise = persistCurrentAsync(status);
+  promise.catch((error) => {
+    console.warn("项目保存失败：", error);
+  });
+  return promise;
+}
+
+export async function persistCurrentAsync(status) {
   const snapshot = buildProjectSnapshot(status);
   state.projectId = snapshot.id;
   upsertProject(snapshot);
+  if (status === "completed") {
+    clearDraft();
+  }
+  return snapshot;
 }
 
 export function loadProjectIntoState(project) {
@@ -118,6 +139,14 @@ export function loadProjectIntoState(project) {
   state.personas = project.personas || [];
   state.messages = project.messages || [];
   state.reportMarkdown = project.reportMarkdown || "";
+  // reportComplete: new flag to distinguish full vs partial reports.
+  // For old/API-sourced projects without the flag, check BOTH status and
+  // reportMarkdown — partial reports have reportMarkdown but status "draft".
+  if (project.reportComplete === undefined) {
+    state.reportComplete = project.status === "completed" && !!state.reportMarkdown;
+  } else {
+    state.reportComplete = !!project.reportComplete;
+  }
   state.moderatorGuide = project.moderatorGuide || null;
   state.participantStates = Array.isArray(project.participantStates) ? project.participantStates : [];
   state.contextState = project.contextState || null;
