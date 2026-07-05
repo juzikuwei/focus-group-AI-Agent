@@ -4,9 +4,10 @@
   "private": true,
   "description": "虚拟焦点小组深度访谈系统 MVP",
   "engines": {
-    "node": ">=18"
+    "node": ">=18",
+    "python": ">=3.10"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "python run_backend.py"
   }
 }
